@@ -1,5 +1,5 @@
 /* devSkeletonGpib.c */
-/* devSkeletonGpib.c,v 1.6 2004/02/16 15:02:13 mrk Exp */
+/* $Id: devSkeletonGpib.c,v 1.6 2004/02/16 15:02:13 mrk Exp $ */
 /***********************************************************************
 * Copyright (c) 2002 The University of Chicago,as Operator of Argonne
 * National Laboratory,and the Regents of the University of
