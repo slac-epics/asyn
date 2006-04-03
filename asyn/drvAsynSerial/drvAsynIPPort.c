@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * drvAsynIPPort.c,v 1.20 2005/12/15 16:51:43 rivers Exp
+ * $Id: drvAsynIPPort.c,v 1.27 2006/04/03 23:38:19 norume Exp $
  */
 
 #include <string.h>
@@ -53,7 +53,7 @@
 
 /*
  * This structure holds the hardware-specific information for a single
- * asyn link.  There is one for each serial line.
+ * asyn link.  There is one for each IP socket.
  */
 typedef struct {
     asynUser          *pasynUser;        /*Needed for timeoutHandler*/
@@ -206,13 +206,16 @@ connectIt(void *drvPvt, asynUser *pasynUser)
      * Sanity check
      */
     assert(tty);
-    if (tty->fd >= 0) {
-        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                              "%s: Link already open!", tty->serialDeviceName);
-        return asynError;
-    }
+
     asynPrint(pasynUser, ASYN_TRACE_FLOW,
-                              "Open connection to %s\n", tty->serialDeviceName);
+              "Open connection to %s\n", tty->serialDeviceName);
+
+    /* If pasynUser->reason > 0) then use this as the file descriptor */
+    if (pasynUser->reason > 0) {
+        tty->fd = pasynUser->reason;
+        pasynManager->exceptionConnect(pasynUser);
+        return asynSuccess;
+    }
 
     /*
      * Create the socket
@@ -302,6 +305,10 @@ static asynStatus writeRaw(void *drvPvt, asynUser *pasynUser,
                                 "%s disconnected:", tty->serialDeviceName);
         return asynError;
     }
+    if (numchars == 0) {
+        *nbytesTransfered = 0;
+        return asynSuccess;
+    }
     if ((tty->writePollmsec < 0) || (pasynUser->timeout != tty->writeTimeout)) {
         tty->writeTimeout = pasynUser->timeout;
         if (tty->writeTimeout == 0) {
@@ -370,6 +377,15 @@ static asynStatus writeRaw(void *drvPvt, asynUser *pasynUser,
             status = asynError;
             break;
         }
+        /* If send() returns 0 on a SOCK_STREAM (TCP) socket, the connection has closed */
+        if ((thisWrite == 0) && (tty->socketType == SOCK_STREAM)) {
+            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                          "%s connection closed",
+                          tty->serialDeviceName);
+            closeConnection(pasynUser,tty);
+            status = asynError;
+            break;
+        }
     }
     if (timerStarted)
         epicsTimerCancel(tty->timer);
@@ -427,6 +443,7 @@ static asynStatus readRaw(void *drvPvt, asynUser *pasynUser,
     }
     tty->cancelFlag = 0;
     tty->timeoutFlag = 0;
+    *gotEom = 0;
     for (;;) {
         if (!timerStarted && (tty->readTimeout > 0)) {
             epicsTimerStartDelay(tty->timer, tty->readTimeout);
@@ -458,6 +475,15 @@ static asynStatus readRaw(void *drvPvt, asynUser *pasynUser,
                 status = asynError;
                 break;
             }
+            /* If recv() returns 0 on a SOCK_STREAM (TCP) socket, the connection has closed */
+            if ((thisRead == 0) && (tty->socketType == SOCK_STREAM)) {
+                epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                              "%s connection closed",
+                              tty->serialDeviceName);
+                closeConnection(pasynUser,tty);
+                status = asynError;
+                break;
+            }
             if (tty->readTimeout == 0)
                 tty->timeoutFlag = 1;
         }
@@ -474,6 +500,8 @@ static asynStatus readRaw(void *drvPvt, asynUser *pasynUser,
     if (tty->timeoutFlag && (status == asynSuccess))
         status = asynTimeout;
     *nbytesTransfered = nRead;
+    /* If there is room add a null byte */
+    if (nRead < maxchars) data[nRead] = 0;
     return status;
 }
 
@@ -531,7 +559,7 @@ static const struct asynCommon drvAsynIPPortAsynCommon = {
 };
 
 /*
- * Configure and register a generic serial device
+ * Configure and register an IP socket from a hostInfo string
  */
 int
 drvAsynIPPortConfigure(const char *portName,
