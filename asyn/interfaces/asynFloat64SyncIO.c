@@ -70,23 +70,21 @@ static asynStatus connect(const char *port, int addr,
     *ppasynUser = pasynUser;
     status = pasynManager->connectDevice(pasynUser, port, addr);    
     if (status != asynSuccess) {
-      printf("Can't connect to port %s address %d %s\n",
-          port, addr,pasynUser->errorMessage);
-      pasynManager->freeAsynUser(pasynUser);
-      free(pioPvt);
-      return status ;
+        return status;
     }
     pasynInterface = pasynManager->findInterface(pasynUser, asynCommonType, 1);
     if (!pasynInterface) {
-       printf("%s interface not supported\n", asynCommonType);
-       goto cleanup;
+       epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+           "interface %s is not supported by port\n",asynCommonType);
+       return asynError;
     }
     pioPvt->pasynCommon = (asynCommon *)pasynInterface->pinterface;
     pioPvt->pcommonPvt = pasynInterface->drvPvt;
     pasynInterface = pasynManager->findInterface(pasynUser, asynFloat64Type, 1);
     if (!pasynInterface) {
-       printf("%s interface not supported\n", asynFloat64Type);
-       goto cleanup;
+       epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+           "interface %s is not supported by port\n",asynFloat64Type);
+       return asynError;
     }
     pioPvt->pasynFloat64 = (asynFloat64 *)pasynInterface->pinterface;
     pioPvt->float64Pvt = pasynInterface->drvPvt;
@@ -103,15 +101,11 @@ static asynStatus connect(const char *port, int addr,
                 pioPvt->pasynDrvUser = pasynDrvUser;
                 pioPvt->drvUserPvt = drvPvt;
             } else {
-                printf("asynFloat64SyncIO::connect drvUserCreate drvInfo=%s %s\n",
-                         drvInfo, pasynUser->errorMessage);
+                return status;
             }
         }
     }
     return asynSuccess ;
-cleanup:
-    disconnect(pasynUser);
-    return asynError;
 }
 
 static asynStatus disconnect(asynUser *pasynUser)
@@ -122,23 +116,11 @@ static asynStatus disconnect(asynUser *pasynUser)
     if(pioPvt->pasynDrvUser) {
         status = pioPvt->pasynDrvUser->destroy(pioPvt->drvUserPvt,pasynUser);
         if(status!=asynSuccess) {
-            asynPrint(pasynUser, ASYN_TRACE_ERROR,
-                "asynFloat64SyncIO pasynDrvUser->destroy failed %s\n",
-                pasynUser->errorMessage);
             return status;
         }
     }
-    status = pasynManager->disconnect(pasynUser);
-    if(status!=asynSuccess) {
-        asynPrint(pasynUser, ASYN_TRACE_ERROR,
-            "asynFloat64SyncIO disconnect failed %s\n",pasynUser->errorMessage);
-        return status;
-    }
     status = pasynManager->freeAsynUser(pasynUser);
     if(status!=asynSuccess) {
-        asynPrint(pasynUser, ASYN_TRACE_ERROR,
-            "asynFloat64SyncIO freeAsynUser failed %s\n",
-            pasynUser->errorMessage);
         return status;
     }
     free(pioPvt);
@@ -147,23 +129,23 @@ static asynStatus disconnect(asynUser *pasynUser)
 
 static asynStatus writeOp(asynUser *pasynUser,epicsFloat64 value,double timeout)
 {
-    asynStatus status;
+    asynStatus status, unlockStatus;
     ioPvt      *pPvt = (ioPvt *)pasynUser->userPvt;
 
     pasynUser->timeout = timeout;
     status = pasynManager->lockPort(pasynUser);
     if(status!=asynSuccess) {
-        asynPrint(pasynUser, ASYN_TRACE_ERROR,
-            "asynFloat64SyncIO lockPort failed %s\n",pasynUser->errorMessage);
         return status;
     }
     status = pPvt->pasynFloat64->write(pPvt->float64Pvt, pasynUser,value);
-    asynPrint(pasynUser, ASYN_TRACEIO_DEVICE, 
-              "asynFloat64SyncIO status=%d, wrote: %e\n",
-              status,value);
-    if((pasynManager->unlockPort(pasynUser)) ) {
-        asynPrint(pasynUser,ASYN_TRACE_ERROR,
-            "unlockPort error %s\n", pasynUser->errorMessage);
+    if (status==asynSuccess) {
+        asynPrint(pasynUser, ASYN_TRACEIO_DEVICE, 
+                  "asynFloat64SyncIO wrote: %e\n",
+                  value);
+    }
+    unlockStatus = pasynManager->unlockPort(pasynUser);
+    if (unlockStatus != asynSuccess) {
+        return unlockStatus;
     }
     return status;
 }
@@ -171,21 +153,21 @@ static asynStatus writeOp(asynUser *pasynUser,epicsFloat64 value,double timeout)
 static asynStatus readOp(asynUser *pasynUser,epicsFloat64 *pvalue,double timeout)
 {
     ioPvt      *pPvt = (ioPvt *)pasynUser->userPvt;
-    asynStatus status;
+    asynStatus status, unlockStatus;
 
     pasynUser->timeout = timeout;
     status = pasynManager->lockPort(pasynUser);
     if(status!=asynSuccess) {
-        asynPrint(pasynUser, ASYN_TRACE_ERROR,
-            "asynFloat64SyncIO lockPort failed %s\n",pasynUser->errorMessage);
         return status;
     }
     status = pPvt->pasynFloat64->read(pPvt->float64Pvt, pasynUser, pvalue);
-    asynPrint(pasynUser, ASYN_TRACEIO_DEVICE, 
-                 "asynFloat64SyncIO status=%d read: %e\n",status,*pvalue);
-    if((pasynManager->unlockPort(pasynUser)) ) {
-        asynPrint(pasynUser,ASYN_TRACE_ERROR,
-            "unlockPort error %s\n", pasynUser->errorMessage);
+    if (status==asynSuccess) {
+        asynPrint(pasynUser, ASYN_TRACEIO_DEVICE, 
+                  "asynFloat64SyncIO read: %e\n", *pvalue);
+    }
+    unlockStatus = pasynManager->unlockPort(pasynUser);
+    if (unlockStatus != asynSuccess) {
+        return unlockStatus;
     }
     return status;
 }
@@ -198,9 +180,11 @@ static asynStatus writeOpOnce(const char *port, int addr,
 
     status = connect(port,addr,&pasynUser,drvInfo);
     if(status!=asynSuccess) {
-       printf("asynFloat64SyncIO connect failed %s\n",
+       asynPrint(pasynUser, ASYN_TRACE_ERROR,
+           "asynFloat64SyncIO connect failed %s\n",
            pasynUser->errorMessage);
-       return status;
+        disconnect(pasynUser);
+        return status;
     }
     status = writeOp(pasynUser,value,timeout);
     if(status!=asynSuccess) {
@@ -219,9 +203,11 @@ static asynStatus readOpOnce(const char *port, int addr,
 
     status = connect(port,addr,&pasynUser,drvInfo);
     if(status!=asynSuccess) {
-       printf("asynFloat64SyncIO connect failed %s\n",
+        asynPrint(pasynUser, ASYN_TRACE_ERROR,
+           "asynFloat64SyncIO connect failed %s\n",
            pasynUser->errorMessage);
-       return status;
+        disconnect(pasynUser);
+        return status;
     }
     status = readOp(pasynUser,pvalue,timeout);
     if(status!=asynSuccess) {
