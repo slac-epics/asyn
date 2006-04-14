@@ -12,9 +12,52 @@ alink="#FF0000">
 <center>
 <h1>asynDriver: Asynchronous Driver Support - Release Notes</h1>
 
-<h1>December 13 2005</h1>
+<h1>April 14, 2006</h1>
 </center>
 <hr>
+
+<center>
+<h2>Release 4-5</h2>
+</center>
+
+<h3>memMalloc/memFree</h3>
+<p>memMalloc was allocating the amount of memory the caller requested rather
+than the amount required for the freeList.
+If memFree was called and the memory reallocated to a user requesting
+a larger size, memory corruption occured. This is fixed.
+</p>
+<h3>SyncIO routines</h3>
+<p>If the connect call fails the asynUser is no longer freed.
+Instead a message is put into asynUser.errorMessage.
+The caller must call disconnect in order to free the storage for the asynUser.
+</p>
+<p>The SyncIO routines no longer call asynPrint if there is an error and there is
+a valid asynUser available.  Rather they return an error message in pasynUser->errorMessage.
+The SyncIO*Once functions still call asynPrint for errors, because they do not have a
+way of returning an error message.
+</p>
+
+<h3>Serial, TCP/UDP/IP</h3>
+<p>Handle 0-length write requests.
+
+<h3>TCP/UDP/IP</h3>
+<p>Added drvAsynIPServerPort to support TCP and UDP socket servers.
+<p>Added iocBoot/testIPServer to test TCP server support.
+<p>drvAsynIPPort now closes TCP sockets when remote system closes connection.
+<p>drvAsynIPPort connect function now uses pasynUser->reason as a file descriptor if it is > 0.
+This allows drvAsynIPServerPort to re-use asyn ports it creates.
+<p>Made drvAsynIPPort add null byte at end of input if there is room.
+<p>Made drvAsynIPPort:readRaw set eomReason to 0.  It was not setting eomReason at all previously.
+
+<h3>Serial</h3>
+<p>Made drvAsynSerialPort add null byte at end of input if there is room.
+<p>Made drvAsynSerialPort:readRaw set eomReason to 0.  It was not setting eomReason at all previously.
+
+<h3>Interfaces</h3>
+<p>Added asynCommonSyncIO for synchronous support of the asynCommon interface.
+
+<h3>VME GPIB</h3>
+<p>Add delay loops to get these boards to work with faster VME CPU modules.
 
 <center>
 <h2>Release 4-4</h2>
