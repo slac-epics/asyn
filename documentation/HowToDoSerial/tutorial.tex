@@ -408,9 +408,9 @@ value must be set to 0. All the other values are left as created by
 the makeSupport.pl script:
 
 \begin{lyxcode}
-static~long~init\_ai(int~parm)~\\
+static~long~init\_ai(int~pass)~\\
 \{~\\
-~~~~if(parm==0)~\{~\\
+~~~~if(pass==0)~\{~\\
 ~~~~~~~~devSupParms.name~=~\char`\"{}devAB300\char`\"{};~\\
 ~~~~~~~~devSupParms.gpibCmds~=~gpibCmds;~\\
 ~~~~~~~~devSupParms.numparams~=~NUMPARAMS;~\\
