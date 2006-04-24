@@ -9,8 +9,5 @@ DIRS += testGpibApp
 DIRS += testGpibSerialApp
 DIRS += testEpicsApp
 DIRS += testManagerApp
-ifdef SNCSEQ
-DIRS += testIPServerApp
-endif
 DIRS += iocBoot
 include $(TOP)/configure/RULES_TOP
