@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * $Id: drvAsynIPPort.c,v 1.2 2006/09/01 22:20:20 pengs Exp $
+ * $Id: drvAsynIPPort.c,v 1.32 2006/06/12 22:07:55 norume Exp $
  */
 
 /* Previous versions of drvAsynIPPort.c (1.29 and earlier, asyn R4-5 and earlier)
@@ -138,17 +138,9 @@ static int setNonBlock(int fd, int nonBlockFlag)
     if ((flags = fcntl(fd, F_GETFL, 0)) < 0)
         return -1;
     if (nonBlockFlag)
-#ifdef __rtems__
-        flags |= (O_NONBLOCK | 0x1000);
-#else
         flags |= O_NONBLOCK;
-#endif
     else
-#ifdef __rtems__
-        flags &= ~(O_NONBLOCK | 0x1000); /* Here is a RTEMS bug, this is a work-around */
-#else
         flags &= ~O_NONBLOCK;
-#endif
     if (fcntl(fd, F_SETFL, flags) < 0)
         return -1;
 #endif
@@ -312,17 +304,12 @@ static asynStatus writeRaw(void *drvPvt, asynUser *pasynUser,
     if (writePollmsec == 0) writePollmsec = 1;
     if (writePollmsec < 0) writePollmsec = -1;
 #ifdef USE_SOCKTIMEOUT
-    {
-        struct timeval tv;
-        tv.tv_sec = writePollmsec / 1000;
-        tv.tv_usec = 1000 * (writePollmsec % 1000);
-        if (setsockopt(tty->fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv) < 0)
-        {
-            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                               "Can't set %s socket send timeout: %s",
-                               tty->IPDeviceName, strerror(SOCKERRNO));
-            return asynError;
-        }
+    if (setsockopt(tty->fd, IPPROTO_TCP, SO_SNDTIMEO,
+                   &writePollmsec, sizeof writePollmsec) < 0) {
+        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                      "Can't set %s socket send timeout: %s",
+                      tty->IPDeviceName, strerror(SOCKERRNO));
+        return asynError;
     }
 #endif
 #ifdef USE_POLL
@@ -391,17 +378,12 @@ static asynStatus readRaw(void *drvPvt, asynUser *pasynUser,
     if (readPollmsec == 0) readPollmsec = 1;
     if (readPollmsec < 0) readPollmsec = -1;
 #ifdef USE_SOCKTIMEOUT
-    {
-        struct timeval tv;
-        tv.tv_sec = readPollmsec / 1000;
-        tv.tv_usec = 1000 * (readPollmsec % 1000);
-        if (setsockopt(tty->fd, SOL_SOCKET, SO_RCVTIMEO,  &tv, sizeof tv) < 0)
-        {
-            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                               "Can't set %s socket receive timeout: %s",
-                               tty->IPDeviceName, strerror(SOCKERRNO));
-            status = asynError;
-        }
+    if (setsockopt(tty->fd, IPPROTO_TCP, SO_RCVTIMEO,
+                                   &readPollmsec, sizeof readPollmsec) < 0) {
+        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                      "Can't set %s socket receive timeout: %s",
+                      tty->IPDeviceName, strerror(SOCKERRNO));
+        status = asynError;
     }
 #endif
     if (gotEom) *gotEom = 0;
