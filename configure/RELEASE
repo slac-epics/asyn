@@ -1,9 +1,10 @@
 #RELEASE Location of external products
 #  IPAC is only necessary if support for Greensprings IP488 is required
-#  IPAC release V2-7 or later is required.
-IPAC=/corvette/home/epics/devel/ipac/2-8
-# SEQ is required for testIPServer
-#SNCSEQ=/home/phoebus/NORUME/src/EPICS/modules/soft/seq
 #  EPICS_BASE 3.14.6 or later is required
+EPICS_MODULES=/afs/slac/g/lcls/build/epics/modules
+SEQ=$(EPICS_MODULES)/seq/Devl
+IPAC=$(EPICS_MODULES)/ipac/ipac-R1-0-1
+
+EPICS_BASE_RELEASE=/afs/slac/g/lcls/build/epics/base/base-R1-0-0
+EPICS_BASE=$(EPICS_BASE_RELEASE)
 LINUX_GPIB=NO
-EPICS_BASE=/home/phoebus/NORUME/src/EPICS/base_R3_14_2_branch
