@@ -19,6 +19,11 @@
 # 
 #==============================================================
 #
+#
+asyn-R4-7-1-lcls5: Build with base-R3-14-9-lcls1 (RTEMS 4.7.1)
+                   modifications needed to bring the module to EPICS R3-14-9 standard
+                   at LCLS
+
 asyn-R4-7-1-lcls4: Backout to build with base-R2-14-8-2-lcls2
                    Build with ipac-R2-8-lcls3
                    Add this file
