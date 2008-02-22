@@ -25,6 +25,13 @@ MSI=$(EPICS_SITE_TOP)/extensions/$(EXTENSIONS_MODULE_VERSION)/bin/$(EPICS_HOST_A
 # # ========================================================================================
 
 # =============================================================
+# Define location of module tree with respect to
+# EPICS_SITE_TOP
+# =============================================================
+EPICS_MODULES=$(EPICS_SITE_TOP)/modules
+
+
+# =============================================================
 # Define the version of modules needed by
 # IOC apps or other Support apps
 # =============================================================
