@@ -6,7 +6,7 @@
 # Define the version of modules needed by
 # IOC apps or other Support apps
 # =============================================================
-IPAC_MODULE_VERSION=ipac-R2-8-lcls3
+IPAC_MODULE_VERSION=ipac-R2-8-lcls4
 
 # ============================================================
 #  IPAC release V2-7 or later is required.
