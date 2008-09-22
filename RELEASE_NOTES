@@ -22,6 +22,12 @@
 #==============================================================
 #
 #
+asyn4-10:
+Build with base-R3-14-10 and rtems 4.9
+Many bug fixes as well.  Check with Author's main site
+at the APS
+
+
 asyn-R4-9-lcls2:   Build with base-R3-14-9-lcls1 and ipac-R2-8-lcls4.
 		   Include ipac support only for RTEMS-beatnik target.
 
