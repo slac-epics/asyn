@@ -5,6 +5,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[latin9]{inputenc}
 \setcounter{tocdepth}{2}
+\usepackage{url}
 
 \makeatletter
 
@@ -25,7 +26,6 @@
 {\end{list}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
-\usepackage{hevea}
 \usepackage{moreverb}
 \usepackage{url}
 
@@ -52,7 +52,7 @@
 
 
 \author{W. Eric Norum\\
-\mailto{norume@aps.anl.gov}}
+norume.aps.anl.gov \url{mailto:norume@aps.anl.gov}}
 
 \maketitle
 
@@ -63,7 +63,7 @@ EPICS support for a simple serial or GPIB (IEEE-488) device. The steps
 are presented in a way that should make it possible to apply them
 in cookbook fashion to create support for other devices. For comprehensive
 description of all the details of the I/O system used here, refer
-to the \ahref{../asynDriver.html}{asynDriver} and \ahref{../devGpib.html}{devGpib}
+to the asynDriver \url{../asynDriver.html} and devGpib \url{../devGpib.html}
 documentation.
 
 This document isn't for the absolute newcomer though. You must have
@@ -87,12 +87,8 @@ in controlling some other device so you won't be able to use the information
 directly. I chose the AB300 as the basis for this tutorial since the
 AB300 has a very limited command set, which keeps this document small,
 and yet has commands which raise many of the issues that you'll have
-to consider when writing support for other devices.
-
-\begin{htmlonly}
-If you'd like to print this tutorial you can download a
-\ahref{tutorial.pdf}{PDF version}.
-\end{htmlonly}
+to consider when writing support for other devices. If you'd like
+to print this tutorial you can download PDF version \url{tutorial.pdf}.
 
 
 \section{Determine the required I/O operations}
@@ -229,7 +225,7 @@ the I/O operation to read or write that value.
 
 The command array entries I created for the AB300 are shown below.
 The elements of each entry are described using the names from the
-\ahref{../devGpib.html}{GPIB documentation}. 
+GPIB documentation \url{../devGpib.html}. 
 
 
 \paragraph{Command array index 0 -- Device Reset}
@@ -431,7 +427,8 @@ device support file and the DTYP fields in the application database.
 The makeSupport.pl command created an example file in \texttt{AB300Sup/devAB300.dbd}.
 If you removed any of the \texttt{DSET\_}\textit{xxx} definitions
 from the device support file you must remove the corresponding lines
-from this file.
+from this file. You must define an analog-in DSET even if the device
+provides no analog-in records (as is the case for the AB300).
 
 \verbatiminput{AB300/AB300Sup/devAB300.dbd}
 
@@ -644,7 +641,7 @@ asynSetTraceMask(\char`\"{}L0\char`\"{},-1,0x9)~\\
 asynSetTraceIOMask(\char`\"{}L0\char`\"{},-1,0x2)
 \end{lyxcode}
 A better way to control the amount and type of diagnostic output is
-to add an \ahref{\url{../asynRecord.html}}{asynRecord} to your application.
+to add an asynRecord \url{../asynRecord.html} to your application.
 
 \end{enumerate}
 
