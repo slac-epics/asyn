@@ -108,14 +108,7 @@ static void echoHandler(myData *pPvt)
         }
     }
     done:
-    status = pasynManager->freeAsynUser(pasynUser);
-    if (status != asynSuccess) {
-        asynPrint(pasynUser, ASYN_TRACE_ERROR,
-                              "echoHandler: Can't free port %s asynUser\n",
-                                                               pPvt->portName);
-    }
-    free(pPvt->portName);
-    free(pPvt);
+    return;
 }
 
                          

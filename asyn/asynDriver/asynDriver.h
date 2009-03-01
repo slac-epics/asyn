@@ -134,7 +134,6 @@ typedef struct asynManager {
                                   interruptNode*pinterruptNode);
     asynStatus (*interruptStart)(void *pasynPvt,ELLLIST **plist);
     asynStatus (*interruptEnd)(void *pasynPvt);
-    const char *(*strStatus)(asynStatus status);
 }asynManager;
 epicsShareExtern asynManager *pasynManager;
 

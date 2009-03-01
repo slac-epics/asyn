@@ -1,21 +1,30 @@
-all: pdf
+all: pdf html
 
 pdf: tutorial.pdf
 
 tutorial.tex: tutorial.lyx
-	lyx --export pdflatex tutorial.lyx
+	lyx --export latex tutorial.lyx
 
 tutorial.pdf: tutorial.tex
-	pdflatex tutorial.tex
-	pdflatex tutorial.tex
+	latex tutorial.tex
+	latex tutorial.tex
+	dvips -t letter -P pdf -G0 -o tutorial.ps tutorial.dvi
+	ps2pdf tutorial.ps
 	rm -f tutorial.log tutorial.out tutorial.toc tutorial.ps
 
-install: pdf
-	scp tutorial.pdf $(WEB_BASE)
+html: tutorial.html
+
+tutorial.html: tutorial.pdf Makefile
+	hevea -v tutorial.tex
+	hevea -v tutorial.tex
+
+install: html pdf
+	scp `find tutorial -type f -print -depth` \
+			$(WEB_BASE)
 
 clean:
 	rm -f *.dvi *.log *.aux *.bbl *.blg *.lof *.lot *.toc *.out *.haux *.htoc
 	rm -f tutorial.ps tutorial.tex tutorial.lyx~
 
 realclean: clean
-	rm -rf tutorial.lyx~ tutorial.pdf
+	rm -rf tutorial.html tutorial.lyx~ tutorial.pdf

@@ -497,7 +497,7 @@ static int readArbitraryBlockProgramData(gpibDpvt *pgpibDpvt)
         }
         *buf++= '#';
         bufSize -= nread + 1;
-        status = pasynOctet->read(asynOctetPvt,pasynUser,buf,1,&nread,0);
+        status = pasynOctet->readRaw(asynOctetPvt,pasynUser,buf,1,&nread,0);
         if (status != asynSuccess) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                  "Error reading arbitrary block program data number of digits");
@@ -521,7 +521,7 @@ static int readArbitraryBlockProgramData(gpibDpvt *pgpibDpvt)
                                       "Arbitrary block program data too long");
             return -1;
         }
-        status = pasynOctet->read(asynOctetPvt,pasynUser,buf,count,&nread,0);
+        status = pasynOctet->readRaw(asynOctetPvt,pasynUser,buf,count,&nread,0);
         if (status!=asynSuccess) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                   "Error reading arbitrary block program data number of bytes");
@@ -542,19 +542,13 @@ static int readArbitraryBlockProgramData(gpibDpvt *pgpibDpvt)
         buf += nread;
         bufSize -= nread;
         count = ltmp;
-        pasynOctet->setInputEos(asynOctetPvt,pasynUser,NULL,0);
-        while (count) {
-            status = pasynOctet->read(asynOctetPvt,pasynUser,buf,count,&nread,0);
-            if (status!=asynSuccess) {
-                pasynOctet->setInputEos(asynOctetPvt,pasynUser,saveEos,saveEosLen);
-                epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+        status = pasynOctet->readRaw(asynOctetPvt,pasynUser,buf,count,&nread,0);
+        if (status!=asynSuccess || nread != count) {
+            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                                  "Error reading arbitrary block program data");
-                return -1;
-            }
-            count -= nread;
-            buf += nread;
+            return -1;
         }
-        pasynOctet->setInputEos(asynOctetPvt,pasynUser,saveEos,saveEosLen);
+        buf += nread;
         status = pasynOctet->read(asynOctetPvt,pasynUser,saveEos,1,&nread,0);
         if (status!=asynSuccess) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,

@@ -42,7 +42,11 @@ typedef struct interposePvt {
 /* asynOctet methods */
 static asynStatus writeIt(void *ppvt,asynUser *pasynUser,
     const char *data,size_t numchars,size_t *nbytesTransfered);
+static asynStatus writeRaw(void *ppvt,asynUser *pasynUser,
+    const char *data,size_t numchars,size_t *nbytesTransfered);
 static asynStatus readIt(void *ppvt,asynUser *pasynUser,
+    char *data,size_t maxchars,size_t *nbytesTransfered,int *eomReason);
+static asynStatus readRaw(void *ppvt,asynUser *pasynUser,
     char *data,size_t maxchars,size_t *nbytesTransfered,int *eomReason);
 static asynStatus flushIt(void *ppvt,asynUser *pasynUser);
 static asynStatus registerInterruptUser(void *drvPvt,asynUser *pasynUser,
@@ -58,7 +62,7 @@ static asynStatus setOutputEos(void *ppvt,asynUser *pasynUser,
 static asynStatus getOutputEos(void *ppvt,asynUser *pasynUser,
     char *eos,int eossize,int *eoslen);
 static asynOctet octet = {
-    writeIt,readIt,flushIt,
+    writeIt,writeRaw,readIt,readRaw,flushIt,
     registerInterruptUser,cancelInterruptUser,
     setInputEos,getInputEos,setOutputEos,getOutputEos
 };
@@ -101,12 +105,30 @@ static asynStatus writeIt(void *ppvt,asynUser *pasynUser,
         pasynUser,data,numchars,nbytesTransfered);
 }
 
+static asynStatus writeRaw(void *ppvt,asynUser *pasynUser,
+    const char *data,size_t numchars,size_t *nbytesTransfered)
+{
+    interposePvt *pinterposePvt = (interposePvt *)ppvt;
+
+    return pinterposePvt->pasynOctetDrv->writeRaw(pinterposePvt->drvPvt,
+        pasynUser,data,numchars,nbytesTransfered);
+}
+
 static asynStatus readIt(void *ppvt,asynUser *pasynUser,
     char *data,size_t maxchars,size_t *nbytesTransfered,int *eomReason)
 {
     interposePvt *pinterposePvt = (interposePvt *)ppvt;
 
     return pinterposePvt->pasynOctetDrv->read(pinterposePvt->drvPvt,
+        pasynUser,data,maxchars,nbytesTransfered,eomReason);
+}
+
+static asynStatus readRaw(void *ppvt,asynUser *pasynUser,
+    char *data,size_t maxchars,size_t *nbytesTransfered,int *eomReason)
+{
+    interposePvt *pinterposePvt = (interposePvt *)ppvt;
+
+    return pinterposePvt->pasynOctetDrv->readRaw(pinterposePvt->drvPvt,
         pasynUser,data,maxchars,nbytesTransfered,eomReason);
 }
 

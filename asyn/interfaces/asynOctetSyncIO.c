@@ -50,7 +50,11 @@ static asynStatus openSocket(const char *server, int port,
                                          char **portName);
 static asynStatus writeIt(asynUser *pasynUser,
     char const *buffer, size_t buffer_len, double timeout,size_t *nbytesTransfered);
+static asynStatus writeRaw(asynUser *pasynUser,
+    char const *buffer, size_t buffer_len, double timeout,size_t *nbytesTransfered);
 static asynStatus readIt(asynUser *pasynUser, char *buffer, size_t buffer_len, 
+                   double timeout, size_t *nbytesTransfered,int *eomReason);
+static asynStatus readRaw(asynUser *pasynUser, char *buffer, size_t buffer_len, 
                    double timeout, size_t *nbytesTransfered,int *eomReason);
 static asynStatus writeRead(asynUser *pasynUser, 
                         const char *write_buffer, size_t write_buffer_len,
@@ -69,7 +73,14 @@ static asynStatus getOutputEos(asynUser *pasynUser,
 static asynStatus writeOnce(const char *port, int addr,
                     char const *buffer, size_t buffer_len, double timeout,
                     size_t *nbytesTransfered, const char *drvInfo);
+static asynStatus writeRawOnce(const char *port, int addr,
+                    char const *buffer, size_t buffer_len, double timeout,
+                    size_t *nbytesTransfered, const char *drvInfo);
 static asynStatus readOnce(const char *port, int addr,
+                   char *buffer, size_t buffer_len, 
+                   double timeout,
+                   size_t *nbytesTransfered,int *eomReason, const char *drvInfo);
+static asynStatus readRawOnce(const char *port, int addr,
                    char *buffer, size_t buffer_len, 
                    double timeout,
                    size_t *nbytesTransfered,int *eomReason, const char *drvInfo);
@@ -94,7 +105,9 @@ static asynOctetSyncIO asynOctetSyncIOManager = {
     disconnect,
     openSocket,
     writeIt,
+    writeRaw,
     readIt,
+    readRaw,
     writeRead,
     flushIt,
     setInputEos,
@@ -102,7 +115,9 @@ static asynOctetSyncIO asynOctetSyncIOManager = {
     setOutputEos,
     getOutputEos,
     writeOnce,
+    writeRawOnce,
     readOnce,
+    readRawOnce,
     writeReadOnce,
     flushOnce,
     setInputEosOnce,
@@ -222,6 +237,30 @@ static asynStatus writeIt(asynUser *pasynUser,
     return status;
 }
 
+static asynStatus writeRaw(asynUser *pasynUser,
+    char const *buffer, size_t buffer_len, double timeout,size_t *nbytesTransfered)
+{
+    asynStatus status, unlockStatus;
+    ioPvt      *pioPvt = (ioPvt *)pasynUser->userPvt;
+
+    pasynUser->timeout = timeout;
+    status = pasynManager->lockPort(pasynUser);
+    if(status!=asynSuccess) {
+        return status;
+    }
+    status = pioPvt->pasynOctet->writeRaw(
+        pioPvt->octetPvt,pasynUser,buffer,buffer_len,nbytesTransfered);
+    if(status==asynSuccess) {
+         asynPrintIO(pasynUser, ASYN_TRACEIO_DEVICE,
+             buffer,buffer_len,"asynOctetSyncIO wrote:\n");
+    }
+    unlockStatus = pasynManager->unlockPort(pasynUser);
+    if (unlockStatus != asynSuccess) {
+        return unlockStatus;
+    }
+    return status;
+}
+
 static asynStatus readIt(asynUser *pasynUser,
                    char *buffer, size_t buffer_len, 
                    double timeout,
@@ -236,6 +275,32 @@ static asynStatus readIt(asynUser *pasynUser,
         return status;
     }
     status = pioPvt->pasynOctet->read(
+        pioPvt->octetPvt,pasynUser,buffer,buffer_len,nbytesTransfered,eomReason);
+    if(status==asynSuccess) {
+         asynPrintIO(pasynUser, ASYN_TRACEIO_DEVICE,
+             buffer,*nbytesTransfered,"asynOctetSyncIO read:\n");
+    }
+    unlockStatus = pasynManager->unlockPort(pasynUser);
+    if (unlockStatus != asynSuccess) {
+        return unlockStatus;
+    }
+    return status;
+}
+
+static asynStatus readRaw(asynUser *pasynUser,
+                   char *buffer, size_t buffer_len, 
+                   double timeout,
+                   size_t *nbytesTransfered,int *eomReason)
+{
+    asynStatus status, unlockStatus;
+    ioPvt      *pioPvt = (ioPvt *)pasynUser->userPvt;
+
+    pasynUser->timeout = timeout;
+    status = pasynManager->lockPort(pasynUser);
+    if(status!=asynSuccess) {
+        return status;
+    }
+    status = pioPvt->pasynOctet->readRaw(
         pioPvt->octetPvt,pasynUser,buffer,buffer_len,nbytesTransfered,eomReason);
     if(status==asynSuccess) {
          asynPrintIO(pasynUser, ASYN_TRACEIO_DEVICE,
@@ -431,6 +496,29 @@ static asynStatus writeOnce(const char *port, int addr,
     return status;
 }
 
+static asynStatus writeRawOnce(const char *port, int addr,
+                    char const *buffer, size_t buffer_len, double timeout,
+                    size_t *nbytesTransfered,const char *drvInfo)
+{
+    asynStatus status;
+    asynUser   *pasynUser;
+
+    status = connect(port,addr,&pasynUser,drvInfo);
+    if(status!=asynSuccess) {
+         asynPrint(pasynUser, ASYN_TRACE_ERROR,
+         "asynOctetSyncIO connect failed %s\n",pasynUser->errorMessage);
+         disconnect(pasynUser);
+         return status;
+    }
+    status = writeRaw(pasynUser,buffer,buffer_len,timeout,nbytesTransfered);
+    if(status!=asynSuccess) {
+        asynPrint(pasynUser, ASYN_TRACE_ERROR,
+             "asynOctetSyncIO writeRaw failed %s\n",pasynUser->errorMessage);
+    }
+    disconnect(pasynUser);
+    return status;
+}
+
 static asynStatus readOnce(const char *port, int addr,
                    char *buffer, size_t buffer_len, 
                    double timeout,
@@ -451,6 +539,31 @@ static asynStatus readOnce(const char *port, int addr,
     if(status!=asynSuccess) {
         asynPrint(pasynUser, ASYN_TRACE_ERROR,
              "asynOctetSyncIO read failed %s\n",pasynUser->errorMessage);
+    }
+    disconnect(pasynUser);
+    return status;
+}
+
+static asynStatus readRawOnce(const char *port, int addr,
+                   char *buffer, size_t buffer_len, 
+                   double timeout,
+                   size_t *nbytesTransfered,int *eomReason,const char *drvInfo)
+{
+    asynStatus status;
+    asynUser   *pasynUser;
+
+    status = connect(port,addr,&pasynUser,drvInfo);
+    if(status!=asynSuccess) {
+         asynPrint(pasynUser, ASYN_TRACE_ERROR,
+             "asynOctetSyncIO connect failed %s\n",pasynUser->errorMessage);
+         disconnect(pasynUser);
+         return status;
+    }
+    status = readRaw(pasynUser,buffer,buffer_len,
+         timeout,nbytesTransfered,eomReason);
+    if(status!=asynSuccess) {
+        asynPrint(pasynUser, ASYN_TRACE_ERROR,
+             "asynOctetSyncIO readRaw failed %s\n",pasynUser->errorMessage);
     }
     disconnect(pasynUser);
     return status;

@@ -263,7 +263,6 @@ static asynStatus removeInterruptUser(asynUser *pasynUser,
                                    interruptNode*pinterruptNode);
 static asynStatus interruptStart(void *pasynPvt,ELLLIST **plist);
 static asynStatus interruptEnd(void *pasynPvt);
-static const char *strStatus(asynStatus status);
 
 static asynManager manager = {
     report,
@@ -304,8 +303,7 @@ static asynManager manager = {
     addInterruptUser,
     removeInterruptUser,
     interruptStart,
-    interruptEnd,
-    strStatus
+    interruptEnd
 };
 epicsShareDef asynManager *pasynManager = &manager;
 
@@ -607,7 +605,7 @@ static BOOL autoConnectDevice(port *pport,device *pdevice)
         epicsMutexUnlock(pport->asynManagerLock);
         connectAttempt(&pdevice->dpc);
         epicsMutexMustLock(pport->asynManagerLock);
-        pdevice->dpc.autoConnectActive = FALSE;
+        pport->dpc.autoConnectActive = FALSE;
     }
     return pdevice->dpc.connected;
 }
@@ -2422,18 +2420,4 @@ static int traceVprintIO(asynUser *pasynUser,int reason,
     if(fp==stdout || fp==stderr) fflush(fp);
     epicsMutexUnlock(pasynBase->lockTrace);
     return nout;
-}
-
-/*
- * User-readable status code
- */
-static const char *strStatus(asynStatus status)
-{
-    switch (status) {
-    case asynSuccess:   return "asynSuccess";
-    case asynTimeout:   return "asynTimeout";
-    case asynOverflow:  return "asynOverflow";
-    case asynError:     return "asynError";
-    default:            return "asyn????";
-    }
 }

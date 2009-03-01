@@ -257,16 +257,19 @@ static void interruptCallbackSi(void *drvPvt, asynUser *pasynUser,
 {
     devPvt         *pdevPvt = (devPvt *)drvPvt;
     stringinRecord *psi = (stringinRecord *)pdevPvt->precord;
+    dbCommon       *pr = pdevPvt->precord;
     int            num;
     
     pdevPvt->gotValue = 1; 
     num = (numchars>=MAX_STRING_SIZE ? MAX_STRING_SIZE : numchars);
-    if(num>=0) {
+    if(num>0) {
         strncpy(psi->val,data,num);
         psi->udf = 0;
         if(num<MAX_STRING_SIZE) psi->val[num] = 0;
     }
-    scanIoRequest(pdevPvt->ioScanPvt);
+    dbScanLock(pr);
+    pr->rset->process(pr);
+    dbScanUnlock(pr);
 }
 
 static void interruptCallbackWaveform(void *drvPvt, asynUser *pasynUser,
@@ -274,18 +277,21 @@ static void interruptCallbackWaveform(void *drvPvt, asynUser *pasynUser,
 {
     devPvt         *pdevPvt = (devPvt *)drvPvt;
     waveformRecord *pwf = (waveformRecord *)pdevPvt->precord;
-    unsigned            num;
+    dbCommon       *pr = pdevPvt->precord;
+    int            num;
     
     pdevPvt->gotValue = 1; 
     num = (numchars>=pwf->nelm ? pwf->nelm : numchars);
-    if(num>=0) {
+    if(num>0) {
         char *pbuf = (char *)pwf->bptr;
         memcpy(pbuf,data,num);
         if(num<pwf->nelm) pbuf[num] = 0;
         pwf->nord = num;
         pwf->udf = 0;
     }
-    scanIoRequest(pdevPvt->ioScanPvt);
+    dbScanLock(pr);
+    pr->rset->process(pr);
+    dbScanUnlock(pr);
 }
 
 static void initDrvUser(devPvt *pdevPvt)

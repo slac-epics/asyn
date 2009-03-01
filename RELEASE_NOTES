@@ -16,30 +16,9 @@
 #  Mod:
 #         05-Dev-2008, K. Luchini        (LUCHINI):
 #            add asyn-R4-7-1-lcls5
-#         10-Apr-2008, S. Schuh          (SCHUHS):
-#            add asyn-R4-9, asyn-R4-9-lcls1, and asyn-R4-9-lcls2
 # 
 #==============================================================
 #
-#
-asyn4-10:
-Build with base-R3-14-10 and rtems 4.9
-Many bug fixes as well.  Check with Author's main site
-at the APS
-
-
-asyn-R4-9-lcls2:   Build with base-R3-14-9-lcls1 and ipac-R2-8-lcls4.
-		   Include ipac support only for RTEMS-beatnik target.
-
-asyn-R4-9-lcls1:   Build with base-R3-14-8-2-lcls2 and ipac-R2-8-lcls3.
-		   Include ipac support only for RTEMS-beatnik target.
-
-asyn-R4-9:         Direct import from APS source.  Will not build at SLAC.
-
-asyn-R4-7-1-lcls5: Build with base-R3-14-9-lcls1 (RTEMS 4.7.1)
-                   modifications needed to bring the module to EPICS R3-14-9 standard
-                   at LCLS
-
 asyn-R4-7-1-lcls4: Backout to build with base-R2-14-8-2-lcls2
                    Build with ipac-R2-8-lcls3
                    Add this file
