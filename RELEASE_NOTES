@@ -14,6 +14,8 @@
 #  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
 #--------------------------------------------------------------
 #  Mod:
+#         22-Feb-2010, K. Luchini        (LUCHINI):
+#            add asyn-R4-9-lcls4
 #         27-Apr-2009, K. Luchini        (LUCHINI):
 #            add asyn-R4-9-lcls3
 #         05-Dec-2008, K. Luchini        (LUCHINI):
@@ -23,7 +25,8 @@
 # 
 #==============================================================
 #
-#
+asyn-R4-9-lcls4:   Build with base-R3-14-8-2 and rtems 4.9.3
+
 asyn-R4-9-lcls3:   Build with base-R3-14-8-2 and rtems 4.9.1
 
 asyn-R4-9-lcls2:   Build with base-R3-14-9-lcls1 and ipac-R2-8-lcls4.

@@ -32,8 +32,8 @@ EPICS_MODULES=$(EPICS_SITE_TOP)/modules
 # Define the version of modules needed by
 # IOC apps or other Support apps
 # =============================================================
-IPAC_MODULE_VERSION=ipac-R2-8-lcls5
-SNCSEQ_MODULE_VERSION=seq-R2-0-11-lcls1
+IPAC_MODULE_VERSION=ipac-R2-8-lcls6
+SNCSEQ_MODULE_VERSION=seq-R2-0-11-lcls2
 
 # ============================================================
 #  IPAC release V2-7 or later is required.
@@ -45,7 +45,7 @@ SNCSEQ=$(EPICS_MODULES)/seq/$(SNCSEQ_MODULE_VERSION)
 # ==============================================================
 # Define the cvs module version of EPICS BASE that you will use
 # =============================================================
-BASE_MODULE_VERSION=base-R3-14-8-2-lcls3
+BASE_MODULE_VERSION=base-R3-14-8-2-lcls5
 
 # =================================================================
 #GPIB Support for Linux?
