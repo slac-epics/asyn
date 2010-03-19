@@ -14,6 +14,8 @@
 #  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
 #--------------------------------------------------------------
 #  Mod:
+#         19-Mar-2010, S. Hoobler        (SONYA):
+#            add asyn-R4-9-lcls5
 #         22-Feb-2010, K. Luchini        (LUCHINI):
 #            add asyn-R4-9-lcls4
 #         27-Apr-2009, K. Luchini        (LUCHINI):
@@ -25,6 +27,8 @@
 # 
 #==============================================================
 #
+asyn-R4-9-lcls5:   Build with base-R3-14-8-2-lcls6 and rtems 4.9.4
+
 asyn-R4-9-lcls4:   Build with base-R3-14-8-2 and rtems 4.9.3
 
 asyn-R4-9-lcls3:   Build with base-R3-14-8-2 and rtems 4.9.1
