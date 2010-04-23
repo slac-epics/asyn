@@ -37,7 +37,7 @@ iocInit()
 Starting iocInit
 ############################################################################
 ###  EPICS IOC CORE built on Feb 17 2006
-###  EPICS R3.14.8 $$Name: not supported by cvs2svn $$ $$Date: 2006-03-03 15:03:20 $$
+###  EPICS R3.14.8 $R4-10$ $2006/03/03 15:03:20$
 ############################################################################
 iocInit: All initialization complete
 ipEchoServer("P5001")

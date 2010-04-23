@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * $Id: drvAsynIPServerPort.c,v 1.13 2008-07-15 18:40:29 rivers Exp $
+ * drvAsynIPServerPort.c,v 1.13 2008/07/15 18:40:29 rivers Exp
  */
 
 #include <string.h>
