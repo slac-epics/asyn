@@ -27,6 +27,9 @@
 # 
 #==============================================================
 #
+asyn-R4-9-lcls6:   Build with base-R3-14-8-2-lcls6_p1
+                   and base-R3-14-12
+
 asyn-R4-9-lcls5:   Build with base-R3-14-8-2-lcls6 and rtems 4.9.4
 
 asyn-R4-9-lcls4:   Build with base-R3-14-8-2 and rtems 4.9.3
