@@ -8,7 +8,7 @@ include $(TOP)/RELEASE_SITE
 BASE_MODULE_VERSION=R3.14.9-0.3.0
 EPICS_BASE=$(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
 
-LINUX_GPIB=NO
+LINUX_GPIB=YES
 
 # ===============================================================
 # Define the version(s) of any other needed modules 
