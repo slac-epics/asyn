@@ -410,12 +410,12 @@ static asynStatus readIt(void *drvPvt,asynUser *pasynUser,
     if(status!=asynSuccess) return status;
     if(pgpibPvt->eoslen==1 && nt>0) {
         if(data[nt-1]==pgpibPvt->eos) {
-            *eomReason |= ASYN_EOM_EOS;
+            if (eomReason) *eomReason |= ASYN_EOM_EOS;
             nt--;
         }
     }
     if(nt<maxchars) data[nt] = 0;
-    if(nt==maxchars) *eomReason |= ASYN_EOM_CNT;
+    if((nt==maxchars) && eomReason) *eomReason |= ASYN_EOM_CNT;
     *nbytesTransfered = (size_t)nt;
     pasynOctetBase->callInterruptUsers(pasynUser,pgpibPvt->pasynPvt,
         data,nbytesTransfered,eomReason);
@@ -594,8 +594,6 @@ static void *registerPort(
     status = pasynManager->registerPort(portName,attributes,autoConnect,
          priority,stackSize);
     if(status==asynSuccess)
-        status = pasynManager->registerInterface(portName,&pgpibPvt->common);
-    if(status==asynSuccess)
         status = pasynOctetBase->initialize(portName,&pgpibPvt->octet,0,0,0);
     if(status==asynSuccess)
         status = pasynManager->registerInterruptSource(
@@ -617,6 +615,10 @@ static void *registerPort(
         status = pasynManager->registerInterruptSource(portName,
             &pgpibPvt->int32,&pgpibPvt->asynInt32Pvt);
     }
+    /* Note: the asynCommon interface must be registered after all other initialization is complete,
+     * because a connection request can occur immediately after registering this interface */
+    if(status==asynSuccess)
+        status = pasynManager->registerInterface(portName,&pgpibPvt->common);
     if(status!=asynSuccess) {
         printf("%s registerPort failed %s\n",portName,pasynUser->errorMessage);
         return 0;

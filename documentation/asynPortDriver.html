@@ -12,7 +12,7 @@
     <h1>
       C++ Base Class for Asyn Port Drivers</h1>
     <h2>
-      February 6, 2009</h2>
+      April 1, 2010</h2>
     <h2>
       Mark Rivers</h2>
     <h2>
@@ -44,269 +44,23 @@
     assigned a number, which is the value in the pasynUser-&gt;reason field that asyn
     clients pass to the driver when reading or writing that parameter. asynPortDriver
     maintains a table of parameter values, associating each parameter number with a
-    data type (integer, double, or string), caching the current value, and maintaining
-    a flag indicating if a value has changed. Drivers use asynPortDriver methods to
-    read the current value from the table, and to set new values in the table. There
-    is a method to call all registered callbacks for values that have changed since
-    callbacks were last done.
+    data type (integer, UInt32Digital, double, or string), caching the current value,
+    and maintaining a flag indicating if a value has changed. Drivers use asynPortDriver
+    methods to read the current value from the table, and to set new values in the table.
+    There is a method to call all registered callbacks for values that have changed
+    since callbacks were last done.
   </p>
   <p>
-    The following are the public definitions in the asynPortDriver class:
-  </p>
-  <pre>typedef struct {
-    int param;
-    const char *paramString;
-} asynParamString_t;
-
-#define asynCommonMask          0x00000001
-#define asynDrvUserMask         0x00000002
-#define asynOptionMask          0x00000004
-#define asynInt32Mask           0x00000008
-#define asyUInt32DigitalMask    0x00000010
-#define asynFloat64Mask         0x00000020
-#define asynOctetMask           0x00000040
-#define asynInt8ArrayMask       0x00000080
-#define asynInt16ArrayMask      0x00000100
-#define asynInt32ArrayMask      0x00000200
-#define asynFloat32ArrayMask    0x00000400
-#define asynFloat64ArrayMask    0x00000800
-#define asynGenericPointerMask  0x00001000
-
-class asynPortDriver {
-public:
-    asynPortDriver(const char *portNameIn, int maxAddrIn, int paramTableSize, int interfaceMask, int interruptMask,
-                   int asynFlags, int autoConnect, int priority, int stackSize);
-    virtual ~asynPortDriver();
-    virtual asynStatus getAddress(asynUser *pasynUser, const char *functionName, int *address); 
-    virtual asynStatus findParam(asynParamString_t *paramTable, int numParams, const char *paramName, int *param);
-    virtual asynStatus readInt32(asynUser *pasynUser, epicsInt32 *value);
-    virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
-    virtual asynStatus getBounds(asynUser *pasynUser, epicsInt32 *low, epicsInt32 *high);
-    virtual asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
-    virtual asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
-    virtual asynStatus readOctet(asynUser *pasynUser, char *value, size_t maxChars,
-                         size_t *nActual, int *eomReason);
-    virtual asynStatus writeOctet(asynUser *pasynUser, const char *value, size_t maxChars,
-                          size_t *nActual);
-    virtual asynStatus readInt8Array(asynUser *pasynUser, epicsInt8 *value, 
-                                        size_t nElements, size_t *nIn);
-    virtual asynStatus writeInt8Array(asynUser *pasynUser, epicsInt8 *value,
-                                        size_t nElements);
-    virtual asynStatus doCallbacksInt8Array(epicsInt8 *value,
-                                        size_t nElements, int reason, int addr);
-    virtual asynStatus readInt16Array(asynUser *pasynUser, epicsInt16 *value,
-                                        size_t nElements, size_t *nIn);
-    virtual asynStatus writeInt16Array(asynUser *pasynUser, epicsInt16 *value,
-                                        size_t nElements);
-    virtual asynStatus doCallbacksInt16Array(epicsInt16 *value,
-                                        size_t nElements, int reason, int addr);
-    virtual asynStatus readInt32Array(asynUser *pasynUser, epicsInt32 *value,
-                                        size_t nElements, size_t *nIn);
-    virtual asynStatus writeInt32Array(asynUser *pasynUser, epicsInt32 *value,
-                                        size_t nElements);
-    virtual asynStatus doCallbacksInt32Array(epicsInt32 *value,
-                                        size_t nElements, int reason, int addr);
-    virtual asynStatus readFloat32Array(asynUser *pasynUser, epicsFloat32 *value,
-                                        size_t nElements, size_t *nIn);
-    virtual asynStatus writeFloat32Array(asynUser *pasynUser, epicsFloat32 *value,
-                                        size_t nElements);
-    virtual asynStatus doCallbacksFloat32Array(epicsFloat32 *value,
-                                        size_t nElements, int reason, int addr);
-    virtual asynStatus readFloat64Array(asynUser *pasynUser, epicsFloat64 *value,
-                                        size_t nElements, size_t *nIn);
-    virtual asynStatus writeFloat64Array(asynUser *pasynUser, epicsFloat64 *value,
-                                        size_t nElements);
-    virtual asynStatus doCallbacksFloat64Array(epicsFloat64 *value,
-                                        size_t nElements, int reason, int addr);
-    virtual asynStatus readGenericPointer(asynUser *pasynUser, void *pointer);
-    virtual asynStatus writeGenericPointer(asynUser *pasynUser, void *pointer);
-    virtual asynStatus doCallbacksGenericPointer(void *pointer, int reason, int addr);
-    virtual asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, 
-                                     const char **pptypeName, size_t *psize);
-    virtual asynStatus drvUserGetType(asynUser *pasynUser,
-                                        const char **pptypeName, size_t *psize);
-    virtual asynStatus drvUserDestroy(asynUser *pasynUser);
-    virtual void report(FILE *fp, int details);
-    virtual asynStatus connect(asynUser *pasynUser);
-    virtual asynStatus disconnect(asynUser *pasynUser);
-   
-    virtual asynStatus setIntegerParam(int index, int value);
-    virtual asynStatus setIntegerParam(int list, int index, int value);
-    virtual asynStatus setDoubleParam(int index, double value);
-    virtual asynStatus setDoubleParam(int list, int index, double value);
-    virtual asynStatus setStringParam(int index, const char *value);
-    virtual asynStatus setStringParam(int list, int index, const char *value);
-    virtual asynStatus getIntegerParam(int index, int * value);
-    virtual asynStatus getIntegerParam(int list, int index, int * value);
-    virtual asynStatus getDoubleParam(int index, double * value);
-    virtual asynStatus getDoubleParam(int list, int index, double * value);
-    virtual asynStatus getStringParam(int index, int maxChars, char *value);
-    virtual asynStatus getStringParam(int list, int index, int maxChars, char *value);
-    virtual asynStatus callParamCallbacks();
-    virtual asynStatus callParamCallbacks(int list, int addr);
-    virtual void reportParams();
-
-    char *portName;
-    int maxAddr;
-    paramList **params;
-    epicsMutexId mutexId;
-
-    /* The asyn interfaces this driver implements */
-    asynStandardInterfaces asynStdInterfaces;
-    
-    /* asynUser connected to ourselves for asynTrace */
-    asynUser *pasynUserSelf;
-};
-</pre>
-  <p>
-    A brief explanation of the methods and data in this class is provided here. Users
-    should look at the example driver in asyn (testAsynPortDriver) to see how this class
-    is used. More complex examples can be found in the drivers and plugins provided
-    with the <a href="http://cars.uchicago.edu/software/epics/areaDetector.html">areaDetector</a>
-    module.
-  </p>
-  <pre>    asynPortDriver(const char *portNameIn, int maxAddrIn, int paramTableSize, int interfaceMask, int interruptMask,
-                   int asynFlags, int autoConnect, int priority, int stackSize);
-
-</pre>
-  <p>
-    This is the constructor for the class.
-  </p>
+    The detailed documentation for asynPortDriver is in these files (generated by doxygen):</p>
   <ul>
-    <li><code>portNameIn</code> is the name of the asyn port for this driver or plugin.</li>
-    <li><code>maxAddrIn</code> is the maximum number of asyn addresses that this driver
-      supports. Often it is 1, but some drivers, for example a 16-channel D/A or A/D would
-      support values &gt; 1. This controls the number of parameter tables that are created.</li>
-    <li><code>parmTableSize</code> is the maximum number of parameters that this driver
-      supports. This controls the size of the parameter tables.</li>
-    <li><code>interfaceMask</code> is a mask with each bit defining which asyn interfaces
-      this driver or plugin supports. The bit mask values are defined in asynPortDriver.h,
-      e.g. <code>asynInt32Mask</code>.</li>
-    <li><code>interruptMask</code> is a mask with each bit defining the asyn interfaces
-      for which this driver supports generating callbacks (interrupts). The bit mask values
-      are defined in asynPortDriver.h, e.g. <code>asynInt8ArrayMask</code>.</li>
-    <li><code>asynFlags</code> is an attributes mask passed to pasynManager-&gt;registerPort.
-      The bits ASYN_CANBLOCK and ASYN_MULTIDEVICE are currently defined for this parameter.</li>
-    <li><code>autoConnect</code> is passed to pasynManager-&gt;registerPort. 1 if the
-      driver should autoconnect.</li>
-    <li><code>priority</code> is passed to pasynManager-&gt;registerPort. It is only relevant
-      if ASYN_CANBLOCK=1. If it is 0 then the default value of epicsThreadPriorityMedium
-      will be assigned by asynManager.</li>
-    <li><code>stackSize</code> is passed to pasynManager-&gt;registerPort. It is only
-      relevant if ASYN_CANBLOCK=1. If it is 0 then the default value of epicsThreadGetStackSize(epicsThreadStackMedium)
-      will be assigned by asynManager.</li>
+    <li><a href="asynDoxygenHTML/classasyn_port_driver.html">asynPortDriver class reference</a></li>
+    <li><a href="asynDoxygenHTML/asyn_port_driver_8h.html">asynPortDriver.h file reference</a></li>
   </ul>
-  <pre>    virtual asynStatus getAddress(asynUser *pasynUser, const char *functionName, int *address); 
-</pre>
   <p>
-    Returns the value from pasynManager-&gt;getAddr(pasynUser,...). Returns an error
-    if the address is not valid, e.g. &gt;= this-&gt;maxAddr.
-  </p>
-  <pre>    virtual asynStatus readInt32(asynUser *pasynUser, epicsInt32 *value);
-    virtual asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
-    virtual asynStatus readOctet(asynUser *pasynUser, char *value, size_t maxChars,
-                             size_t *nActual, int *eomReason);
-</pre>
-  <p>
-    These methods are called by asyn clients to return the current cached value for
-    the parameter indexed by pasynUser-&gt;reason in the parameter table defined by
-    <code>getAddress()</code>. Derived classes typically do not need to implement these
-    methods.
-  </p>
-  <pre>    virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
-    virtual asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
-    virtual asynStatus writeOctet(asynUser *pasynUser, const char *value, size_t maxChars,
-                          size_t *nActual);
-</pre>
-  <p>
-    These methods are called by asyn clients to set the new value of a parameter. The
-    implementation of these methods in asynPortDriver copies the parameter into a cached
-    location for use by the asynRead(Int32, Float64, and Octet) methods. Most drivers
-    will provide their own implementations of these methods to do driver-dependent operations
-    when there is a new value of the parameter. However, if none of the values written
-    on a given interface, e.g. asynInt32, need to be acted upon immediately when they
-    are written, but will only be accessed later using the cached values, then the driver
-    does not need to implement this method and the base class method can be used.
-  </p>
-  <pre>     
-    virtual asynStatus readXXXArray(asynUser *pasynUser, epicsInt8 *value, 
-                                        size_t nElements, size_t *nIn);
-    virtual asynStatus writeXXXArray(asynUser *pasynUser, epicsInt8 *value,
-                                        size_t nElements);
-    virtual asynStatus doCallbacksXXXArray(epicsInt8 *value,
-                                        size_t nElements, int reason, int addr);
-    virtual asynStatus readGenericPointer(asynUser *pasynUser, void *handle);
-    virtual asynStatus writeGenericPointer(asynUser *pasynUser, void *handle);
-    virtual asynStatus doCallbacksGenericPointer(void *handle, int reason, int addr);
-</pre>
-  <p>
-    where XXX=(Int8, Int16, Int32, Float32, or Float64). The readXXX and writeXXX methods
-    only have stub methods that return an error in asynPortDriver, so they must be implemented
-    in the derived classes if the corresponding interface is used. They are not pure
-    virtual functions so that the derived class need not implement the interface if
-    it is not used. The doCallbacksXXX methods in asynPortDriver call any registered
-    asyn clients on the corresponding interface if the <code>reason</code> and <code>addr</code>
-    values match. It typically does not need to be implemented in derived classes.
-  </p>
-  <pre>     
-    virtual asynStatus findParam(asynParamString_t *paramTable, int numParams, const char *paramName, int *param);
-    virtual asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, 
-                                     const char **pptypeName, size_t *psize);
-    virtual asynStatus drvUserGetType(asynUser *pasynUser,
-                                        const char **pptypeName, size_t *psize);
-    virtual asynStatus drvUserDestroy(asynUser *pasynUser);
-</pre>
-  <p>
-    drvUserCreate must be implemented in derived classes that use the parameter facilities
-    of asynPortDriver. The <code>findParam</code> method is a convenience function that
-    searches an array of asynParam_t structures ({enum, string}) and returns the enum
-    (parameter number) matching the string. This is typically used in the implementation
-    of <code>drvUserCreate</code> in derived classes. <code>drvUserGetType</code> and
-    <code>drvUserDestroy</code> typically do not need to be implemented in derived classes.
-  </p>
-  <pre>     
-    virtual void report(FILE *fp, int details);
-    virtual asynStatus connect(asynUser *pasynUser);
-    virtual asynStatus disconnect(asynUser *pasynUser);
-</pre>
-  <p>
-    The <code>report</code> function prints information on registered interrupt clients
-    if details &gt;0, and prints parameter table information if details &gt;5. It is
-    typically called by the implementation of <code>report</code> in derived classes
-    before or after they print specific information about themselves. <code>connect</code>
-    and <code>disconnect</code> call <code>pasynManager-&gt;exceptionConnect</code>
-    and <code>pasynManager-&gt;exceptionDisconnect</code> respectively. Derived classes
-    may or may not need to implement these functions.
-  </p>
-  <pre>     
-    virtual asynStatus setIntegerParam(int index, int value);
-    virtual asynStatus setIntegerParam(int list, int index, int value);
-    virtual asynStatus setDoubleParam(int index, double value);
-    virtual asynStatus setDoubleParam(int list, int index, double value);
-    virtual asynStatus setStringParam(int index, const char *value);
-    virtual asynStatus setStringParam(int list, int index, const char *value);
-    virtual asynStatus getIntegerParam(int index, int * value);
-    virtual asynStatus getIntegerParam(int list, int index, int * value);
-    virtual asynStatus getDoubleParam(int index, double * value);
-    virtual asynStatus getDoubleParam(int list, int index, double * value);
-    virtual asynStatus getStringParam(int index, int maxChars, char *value);
-    virtual asynStatus getStringParam(int list, int index, int maxChars, char *value);
-    virtual asynStatus callParamCallbacks();
-    virtual asynStatus callParamCallbacks(int list, int addr);
-</pre>
-  <p>
-    The <code>setXXXParam</code> methods set the value of a parameter in the parameter
-    table in the object. If the value is different from the previous value of the parameter
-    they also set the flag indicating that the value has changed. The <code>getXXXParam</code>
-    methods return the current value of the parameter. There are two versions of the
-    <code>setXXXParam</code> and <code>getXXXParam</code> methods, one with a <code>list</code>
-    argument, and one without. The one without uses <code>list=0</code>, since there
-    is often only a single parameter list (i.e. if maxAddr=1). The <code>callParamCallbacks</code>
-    methods call back any registered clients for parameters that have changed since
-    the last time <code>callParamCallbacks</code> was called. The version of <code>callParamCallbacks</code>
-    with no arguments uses the first parameter list and matches asyn address=0. There
-    is a second version of <code>callParamCallbacks</code> that takes an argument specifying
-    the parameter list number, and the asyn address to match.
+    Users should look at the example driver in asyn (testAsynPortDriver) to see how
+    this class is used. More complex examples can be found in the drivers and plugins
+    provided with the <a href="http://cars.uchicago.edu/software/epics/areaDetector.html">
+      areaDetector</a> module.
   </p>
   <h2>
     Example driver - testAsynPortDriver</h2>
@@ -322,8 +76,7 @@ public:
   <p>
     This is the medm screen for controlling this example application. It is started
     in the testAsynPortDriverApp/adl directory with the command:</p>
-  <pre>
- medm -x -macro "P=testAPD:, R=scope1:" testAsynPortDriver.adl &amp;
+  <pre> medm -x -macro "P=testAPD:, R=scope1:" testAsynPortDriver.adl &amp;
  </pre>
   <div style="text-align: center">
     <h3>
@@ -350,12 +103,11 @@ public:
     It does callbacks to device support when any of the input records changes, so the
     records can use I/O Intr scanning rather than polling. It uses only the standard
     asyn EPICS record device support provided as part of asyn. Yet the driver is only
-    about 400 lines of well-commented C++ code, because so much of the infrastructure
+    about 340 lines of well-commented C++ code, because so much of the infrastructure
     is handled by the asynPortDriver base class.</p>
   <p>
     Here are the important lines from the startup script to start this IOC:</p>
-  <pre>
-testAsynPortDriverConfigure("testAPD", 1000)
+  <pre>testAsynPortDriverConfigure("testAPD", 1000)
 dbLoadRecords("../../db/testAsynPortDriver.db","P=testAPD:,R=scope1:,PORT=testAPD,ADDR=0,TIMEOUT=1,NPOINTS=1000")
 </pre>
   <p>
@@ -368,15 +120,14 @@ dbLoadRecords("../../db/testAsynPortDriver.db","P=testAPD:,R=scope1:,PORT=testAP
     the value provided in the configure command above.</p>
   <p>
     This is an example of 2 of the record definitions in the database file, testAsynPortDriver.db.</p>
-  <pre>
-###################################################################
+  <pre>###################################################################
 #  These records are the time per division                        #
 ###################################################################
 record(ao, "$(P)$(R)TimePerDiv")
 {
    field(PINI, "1")
    field(DTYP, "asynFloat64")
-   field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))TIME_PER_DIV")
+   field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))SCOPE_TIME_PER_DIV")
    field(PREC, "5")
 }
 
@@ -384,7 +135,7 @@ record(ai, "$(P)$(R)TimePerDiv_RBV")
 {
    field(PINI, "1")
    field(DTYP, "asynFloat64")
-   field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))TIME_PER_DIV")
+   field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))SCOPE_TIME_PER_DIV")
    field(PREC, "5")
    field(SCAN, "I/O Intr")
 }
@@ -405,8 +156,8 @@ record(ai, "$(P)$(R)TimePerDiv_RBV")
     support for ao and ai records, provided in asyn/devEpics/devAsynFloat64.c.</p>
   <p>
     The OUT and INP fields use the PORT, ADDR and TIMEOUT values described above. The
-    final parameter, TIME_PER_DIV in these fields is used by the driver to identify
-    which driver parameter these records are connected to. This is the asyn drvUser
+    final parameter, SCOPE_TIME_PER_DIV in these fields is used by the driver to identify
+    which driver parameter these records are connected to. This is the asyn drvInfo
     parameter, and is discussed below.</p>
   <p>
     Finally, note that the ai record has SCAN=I/O Intr. This means that this record
@@ -416,27 +167,45 @@ record(ai, "$(P)$(R)TimePerDiv_RBV")
     simulation runs if the noise is non-zero.</p>
   <p>
     This is the definition of the testAsynPortDriver class:</p>
-  <pre>
-class testAsynPortDriver : public asynPortDriver {
+  <pre>class testAsynPortDriver : public asynPortDriver {
 public:
     testAsynPortDriver(const char *portName, int maxArraySize);
-                 
+
     /* These are the methods that we override from asynPortDriver */
     virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
     virtual asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
     virtual asynStatus readFloat64Array(asynUser *pasynUser, epicsFloat64 *value,
                                         size_t nElements, size_t *nIn);
-    virtual asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, 
-                                     const char **pptypeName, size_t *psize);
-                                     
+
     /* These are the methods that are new to this class */
     void simTask(void);
-    
+
+protected:
+    /** Values used for pasynUser->reason, and indexes into the parameter library. */
+    int P_Run;
+    #define FIRST_SCOPE_COMMAND P_Run
+    int P_MaxPoints;
+    int P_TimePerDivision;
+    int P_VoltsPerDivision;
+    int P_VoltOffset;
+    int P_TriggerDelay;
+    int P_NoiseAmplitude;
+    int P_UpdateTime;
+    int P_Waveform;
+    int P_TimeBase;
+    int P_MinValue;
+    int P_MaxValue;
+    int P_MeanValue;
+    #define LAST_SCOPE_COMMAND P_MeanValue
+
+private:
     /* Our data */
     epicsEventId eventId;
     epicsFloat64 *pData;
     epicsFloat64 *pTimeBase;
 };
+
+#define NUM_SCOPE_PARAMS (&LAST_SCOPE_COMMAND - &FIRST_SCOPE_COMMAND + 1)
 </pre>
   <p>
     testAsynPortDriver is derived from asynPortDriver. It overrides the methods writeInt32,
@@ -444,62 +213,38 @@ public:
     which runs a separate thread to compute the waveform at the specified update time.</p>
   <p>
     This is the how the parameters are defined in the driver, testAsynPortDriver.cpp</p>
-  <pre>
-typedef enum {
-    P_Run,                /* asynInt32,    r/w */
-    P_MaxPoints,          /* asynInt32,    r/o */
-    P_TimePerDivision,    /* asynFloat64,  r/w */
-    P_VoltsPerDivision,   /* asynFloat64,  r/w */
-    P_VoltOffset,         /* asynFloat64,  r/w */
-    P_TriggerDelay,       /* asynFloat64,  r/w */
-    P_NoiseAmplitude,     /* asynFloat64,  r/w */
-    P_UpdateTime,         /* asynFloat64,  r/w */
-    P_Waveform,           /* asynFloat64Array,  r/o */
-    P_TimeBase,           /* asynFloat64Array,  r/o */
-    P_MinValue,           /* asynFloat64,  r/o */
-    P_MaxValue,           /* asynFloat64,  r/o */
-    P_MeanValue           /* asynFloat64,  r/o */
-} testParams;
-
-/* The command strings are the userParam argument for asyn device support links
- * The asynDrvUser interface in this driver parses these strings and puts the
- * corresponding enum value in pasynUser->reason */
-static asynParamString_t driverParamString[] = {
-    {P_Run,              "RUN"            },
-    {P_MaxPoints,        "MAX_POINTS"     },
-    {P_TimePerDivision,  "TIME_PER_DIV"   },
-    {P_VoltsPerDivision, "VOLTS_PER_DIV"  },
-    {P_VoltOffset,       "VOLT_OFFSET"    },
-    {P_TriggerDelay,     "TRIGGER_DELAY"  },
-    {P_NoiseAmplitude,   "NOISE_AMPLITUDE"},
-    {P_UpdateTime,       "UPDATE_TIME"    },
-    {P_Waveform,         "WAVEFORM"       },
-    {P_TimeBase,         "TIME_BASE"      },
-    {P_MinValue,         "MIN_VALUE"      },
-    {P_MaxValue,         "MAX_VALUE"      },
-    {P_MeanValue,        "MEAN_VALUE"     }
-};
-
-#define NUM_DRIVER_PARAMS (sizeof(driverParamString)/sizeof(driverParamString[0]))
-
+  <pre>/* These are the drvInfo strings that are used to identify the parameters.
+ * They are used by asyn clients, including standard asyn device support */
+#define P_RunString                "SCOPE_RUN"             /* asynInt32,    r/w */
+#define P_MaxPointsString          "SCOPE_MAX_POINTS"      /* asynInt32,    r/o */
+#define P_TimePerDivisionString    "SCOPE_TIME_PER_DIV"    /* asynFloat64,  r/w */
+#define P_VoltsPerDivisionString   "SCOPE_VOLTS_PER_DIV"   /* asynFloat64,  r/w */
+#define P_VoltOffsetString         "SCOPE_VOLT_OFFSET"     /* asynFloat64,  r/w */
+#define P_TriggerDelayString       "SCOPE_TRIGGER_DELAY"   /* asynFloat64,  r/w */
+#define P_NoiseAmplitudeString     "SCOPE_NOISE_AMPLITUDE" /* asynFloat64,  r/w */
+#define P_UpdateTimeString         "SCOPE_UPDATE_TIME"     /* asynFloat64,  r/w */
+#define P_WaveformString           "SCOPE_WAVEFORM"        /* asynFloat64Array,  r/o */
+#define P_TimeBaseString           "SCOPE_TIME_BASE"       /* asynFloat64Array,  r/o */
+#define P_MinValueString           "SCOPE_MIN_VALUE"       /* asynFloat64,  r/o */
+#define P_MaxValueString           "SCOPE_MAX_VALUE"       /* asynFloat64,  r/o */
+#define P_MeanValueString          "SCOPE_MEAN_VALUE"      /* asynFloat64,  r/o */
 </pre>
   <p>
-    Note that each parameter is assigned an enum value that identifies it. It is also
-    associated with a string that is used in the drvUser field of the record INP or
-    OUT fields to associate a record with a parameter.</p>
+    Note that each parameter has an integer value that identifies it. It is also associated
+    with a string that is used in the drvInfo field of the record INP or OUT fields
+    to associate a record with a parameter.</p>
   <p>
     This is the beginning of the constructor for the testAsynPortDriver C++ class.</p>
-  <pre>
-testAsynPortDriver::testAsynPortDriver(const char *portName, int maxPoints) 
-   : asynPortDriver(portName, 
-                    1, /* maxAddr */ 
-                    NUM_DRIVER_PARAMS,
+  <pre>testAsynPortDriver::testAsynPortDriver(const char *portName, int maxPoints)
+   : asynPortDriver(portName,
+                    1, /* maxAddr */
+                    NUM_SCOPE_PARAMS,
                     asynInt32Mask | asynFloat64Mask | asynFloat64ArrayMask | asynDrvUserMask, /* Interface mask */
                     asynInt32Mask | asynFloat64Mask | asynFloat64ArrayMask,  /* Interrupt mask */
                     0, /* asynFlags.  This driver does not block and it is not multi-device, so flag is 0 */
                     1, /* Autoconnect */
                     0, /* Default priority */
-                    0) /* Default stack size*/    
+                    0) /* Default stack size*/
 ...
 </pre>
   <p>
@@ -508,8 +253,8 @@ testAsynPortDriver::testAsynPortDriver(const char *portName, int maxPoints)
     <li>The portName, which is the name of the asyn port to be created. In the st.cmd
       file above this is "testAPD".</li>
     <li>The maximum number of asyn addresses that this driver supports, which is 1.</li>
-    <li>The number of parameters that this driver supports. This is NUM_DRIVER_PARAMS,
-      which was computed above from the size of the <code>driverParamString</code> array.</li>
+    <li>The number of parameters that this driver supports. This is NUM_SCOPE_PARAMS,
+      which was computed above from the addresses of the parameter indices.</li>
     <li>A mask which defines which asyn interfaces this driver supports, in this case
       asynInt32, asynFloat64, asynFloat64Array, and asynDrvUser. All drivers must support
       asynCommon, so that bit is added in the base class.</li>
@@ -533,45 +278,45 @@ testAsynPortDriver::testAsynPortDriver(const char *portName, int maxPoints)
     creates the simTask thread.</p>
   <p>
     This is the implementation of the writeFloat64 function:</p>
-  <pre>
-asynStatus testAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
+  <pre>asynStatus testAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 {
     int function = pasynUser->reason;
     asynStatus status = asynSuccess;
     int run;
+    const char *paramName;
     const char* functionName = "writeFloat64";
 
     /* Set the parameter in the parameter library. */
     status = (asynStatus) setDoubleParam(function, value);
 
-    switch(function) {
-        case P_UpdateTime:
-            /* Make sure the update time is valid. If not change it and put back in parameter library */
-            if (value &lt; MIN_UPDATE_TIME) {
-                value = MIN_UPDATE_TIME;
-                setDoubleParam(P_UpdateTime, value);
-            }
-            /* If the update time has changed and we are running then wake up the simulation task */
-            getIntegerParam(P_Run, &amp;run);
-            if (run) epicsEventSignal(this->eventId);
-            break;
-        default:
-            /* All other parameters just get set in parameter list, no need to
-             * act on them here */
-            break;
+    /* Fetch the parameter string name for possible use in debugging */
+    getParamName(function, &amp;paramName);
+
+    if (function == P_UpdateTime) {
+        /* Make sure the update time is valid. If not change it and put back in parameter library */
+        if (value < MIN_UPDATE_TIME) {
+            value = MIN_UPDATE_TIME;
+            setDoubleParam(P_UpdateTime, value);
+        }
+        /* If the update time has changed and we are running then wake up the simulation task */
+        getIntegerParam(P_Run, &amp;run);
+        if (run) epicsEventSignal(this-&gt;eventId);
+    } else {
+        /* All other parameters just get set in parameter list, no need to
+         * act on them here */
     }
-    
+
     /* Do callbacks so higher layers see any changes */
     status = (asynStatus) callParamCallbacks();
-    
-    if (status) 
-        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                  "%s:%s: status=%d, function=%d, value=%f", 
-                  driverName, functionName, status, function, value);
-    else        
-        asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
-              "%s:%s: function=%d, value=%f\n", 
-              driverName, functionName, function, value);
+
+    if (status)
+        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize,
+                  "%s:%s: status=%d, function=%d, name=%s, value=%f",
+                  driverName, functionName, status, function, paramName, value);
+    else
+        asynPrint(pasynUser, ASYN_TRACEIO_DRIVER,
+              "%s:%s: function=%d, name=%s, value=%f\n",
+              driverName, functionName, function, paramName, value);
     return status;
 }
 </pre>
@@ -579,13 +324,13 @@ asynStatus testAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 va
     This is what is being performed in this function:</p>
   <ul>
     <li>The pasynUser-&gt;reason field is used to get the value of <code>function</code>.
-      This is one of the testParams enum values (e.g. P_TimePerDivision). It was placed
-      in the pasynUser-&gt;reason field by this driver's drvUserCreate method that was
-      called at iocInit, and was passed the drvUser field from the record link, e.g. "TIME_PER_DIV".</li>
+      This is one of the parameter indices (e.g. P_TimePerDivision). It was placed in
+      the pasynUser-&gt;reason field by this driver's drvUserCreate method that was called
+      at iocInit, and was passed the drvUser field from the record link, e.g. "SCOPE_TIME_PER_DIV".</li>
     <li>The value passed is set in the parameter list with <code>setDoubleParam</code>.</li>
-    <li>A switch statement processes each of the parameters differently. In this case
-      only one float64 parameter, P_UpdateTime, needs to actually have any action taken
-      in this function. All other parameters just have their values set in the parameter
+    <li>A series of if statements that processes each of the parameters differently. In
+      this case only one float64 parameter, P_UpdateTime, needs to actually have any action
+      taken in this function. All other parameters just have their values set in the parameter
       list for later use.</li>
     <li>For P_UpdateTime the value is checked for validity to make sure it is greater
       than MIN_UPDATE_TIME. If not then the value is changed, and the new value is written
@@ -607,8 +352,7 @@ asynStatus testAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 va
   <p>
     Finally here is the <code>simTask</code> function, which actually does the simulation.
     It runs in a separate thread created in the constructor:</p>
-  <pre>
-void testAsynPortDriver::simTask(void)
+  <pre>void testAsynPortDriver::simTask(void)
 {
     /* This thread computes the waveform and does callbacks with it */
 
@@ -640,22 +384,22 @@ void testAsynPortDriver::simTask(void)
         maxValue = -1e6;
         meanValue = 0.;
     
-         yScale = 1.0 / voltsPerDivision;
-         for (i=0; i&lt;maxPoints; i++) {
-             noise = noiseAmplitude * (rand()/(double)RAND_MAX - 0.5);
-             pData[i] = AMPLITUDE * (sin(time*FREQUENCY*2*pi)) + noise;
-             /* Compute statistics before doing the yOffset and yScale */
-             if (pData[i] &lt; minValue) minValue = pData[i];
-             if (pData[i] &gt; maxValue) maxValue = pData[i];
-             meanValue += pData[i];
-             pData[i] = NUM_DIVISIONS/2 + yScale * (voltOffset + pData[i]);
-             time += timeStep;
-
+        yScale = 1.0 / voltsPerDivision;
+        for (i=0; i&lt;maxPoints; i++) {
+            noise = noiseAmplitude * (rand()/(double)RAND_MAX - 0.5);
+            pData[i] = AMPLITUDE * (sin(time*FREQUENCY*2*pi)) + noise;
+            /* Compute statistics before doing the yOffset and yScale */
+            if (pData[i] &lt; minValue) minValue = pData[i];
+            if (pData[i] &gt; maxValue) maxValue = pData[i];
+            meanValue += pData[i];
+            pData[i] = NUM_DIVISIONS/2 + yScale * (voltOffset + pData[i]);
+            time += timeStep;
         }
         meanValue = meanValue/maxPoints;
         setDoubleParam(P_MinValue, minValue);
         setDoubleParam(P_MaxValue, maxValue);
         setDoubleParam(P_MeanValue, meanValue);
+        callParamCallbacks();
         doCallbacksFloat64Array(pData, maxPoints, P_Waveform, 0);
     }
 }
