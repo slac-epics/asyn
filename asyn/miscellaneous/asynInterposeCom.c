@@ -2,7 +2,7 @@
  * RFC 2117 support for remote serial ports
  * 
  * Author: W. Eric Norum
- * "$Date: 2011/01/12 00:13:59 $ (UTC)"
+ * "$Date: 2011/02/24 06:00:57 $ (UTC)"
  */
 
 /************************************************************************\
@@ -17,6 +17,13 @@
 
 #include <cantProceed.h>
 #include <epicsStdio.h>
+
+/* Added epicsTypes.h for EPICS R3-14-8-2 */
+#include <epicsVersion.h>
+#if ((EPICS_VERSION > 3) || (EPICS_REVISION >= 14) || (EPICS_MODIFICATION <= 10))
+#include <epicsTypes.h>
+#endif
+
 #include <epicsString.h>
 
 #include "asynDriver.h"
