@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * drvAsynIPServerPort.c,v 1.11 2007/04/23 19:35:50 rivers Exp
+ * $Id: drvAsynIPServerPort.c,v 1.15 2009-08-19 20:24:20 rivers Exp $
  */
 
 #include <string.h>
@@ -159,7 +159,8 @@ static void connectionListener(void *drvPvt)
 {
     ttyController_t *tty = (ttyController_t *)drvPvt;
     struct sockaddr_in clientAddr;
-    int clientFd, clientLen=sizeof(clientAddr);
+    int clientFd;
+    osiSocklen_t clientLen=sizeof(clientAddr);
     ELLLIST *pclientList;
     interruptNode *pnode;
     asynOctetInterrupt *pinterrupt;
@@ -180,7 +181,7 @@ static void connectionListener(void *drvPvt)
               "drvAsynIPServerPort: %s started listening for connections on %s\n", 
               tty->serverInfo);
     while (1) {
-        clientFd = accept(tty->fd, (struct sockaddr *)&clientAddr, &clientLen);
+        clientFd = epicsSocketAccept(tty->fd, (struct sockaddr *)&clientAddr, &clientLen);
         asynPrint(pasynUser, ASYN_TRACE_FLOW,
                   "drvAsynIPServerPort: new connection, socket=%d on %s\n", 
                   clientFd, tty->serverInfo);
@@ -188,7 +189,7 @@ static void connectionListener(void *drvPvt)
             asynPrint(pasynUser, ASYN_TRACE_ERROR,
                       "drvAsynIPServerPort: accept error on %s: fd=%d, %s\n", tty->serverInfo,
                       tty->fd, strerror(errno));
-            break;
+            continue;
         }
         /* See if any clients have registered for callbacks.  If not, close the connection */
         pasynManager->interruptStart(tty->octetCallbackPvt, &pclientList);
@@ -196,7 +197,8 @@ static void connectionListener(void *drvPvt)
         pasynManager->interruptEnd(tty->octetCallbackPvt);
         if (!pnode) {
             /* There are no registered clients to handle connections on this port */
-            close(clientFd);
+            epicsSocketDestroy(clientFd);
+            continue;
         }
         /* Search for a port we have already created which is now disconnected */
         pl = NULL;
@@ -212,8 +214,8 @@ static void connectionListener(void *drvPvt)
             if (tty->numClients >= tty->maxClients) {
                 asynPrint(pasynUser, ASYN_TRACE_ERROR,
                           "drvAsynIPServerPort: %s: too many clients\n", tty->portName);
-                close(clientFd);
-                break;
+                epicsSocketDestroy(clientFd);
+                continue;
             }
             /* Create a new asyn port with a unique name */
             len = strlen(tty->portName)+10;  /* Room for port name + ":" + numClients */
@@ -231,7 +233,7 @@ static void connectionListener(void *drvPvt)
             if (status) {
                 asynPrint(pasynUser, ASYN_TRACE_ERROR,
                           "drvAsynIPServerPort: unable to create port %s\n", pl->portName);
-                break;
+                continue;
             }
             status = pasynCommonSyncIO->connect(pl->portName, -1, &pl->pasynUser, NULL);
             if (status!=asynSuccess) {
@@ -239,12 +241,19 @@ static void connectionListener(void *drvPvt)
                     "%s drvAsynIPServerPort: error calling "
                     "pasynCommonSyncIO->connect %s\n",
                     pl->portName,pl->pasynUser->errorMessage);
-                break;
+                continue;
             }
         }
         /* Set the existing port to use the new file descriptor */
         pl->pasynUser->reason = clientFd;
-        pasynCommonSyncIO->connectDevice(pl->pasynUser);
+        status = pasynCommonSyncIO->connectDevice(pl->pasynUser);
+        if (status!=asynSuccess) {
+            asynPrint(pasynUser, ASYN_TRACE_ERROR,
+                "%s drvAsynIPServerPort: error calling "
+                "pasynCommonSyncIO->connectDevice %s\n",
+                pl->portName,pl->pasynUser->errorMessage);
+            continue;
+        }
         pl->pasynUser->reason = 0;
         /* Set the new port to initially have the same trace mask that we have */
         pasynTrace->setTraceMask(pl->pasynUser,   pasynTrace->getTraceMask(pasynUser));
@@ -365,14 +374,13 @@ int drvAsynIPServerPortConfigure(const char *portName,
      */
     protocol[0] = '\0';
     if (((cp = strchr(serverInfo, ':')) == NULL)
-     || (sscanf(cp, ":%ud %5s", &tty->portNumber, protocol) < 1)) {
+     || (sscanf(cp, ":%u %5s", &tty->portNumber, protocol) < 1)) {
         printf("drvAsynIPPortConfigure: \"%s\" is not of the form \"<host>:<port> [protocol]\"\n",
                                                         tty->serverInfo);
         ttyCleanup(tty);
         return -1;
     }
     *cp = '\0';
-
 
     if ((protocol[0] ==  '\0')
      || (epicsStrCaseCmp(protocol, "tcp") == 0)) {

@@ -12,10 +12,19 @@ include $(TOP)/configure/CONFIG
 
 ASYN = $(TOP)/asyn
 #USR_CFLAGS += -DDEBUG
+USR_INCLUDES_cygwin32 += -I/usr/include/tirpc
+
+# The following gets rid of the -fno-implicit-templates flag on vxWorks, 
+# so we get automatic template instantiation.
+# This is what we want for miscellaneous/asynPortDriver.cpp
+ifeq (vxWorks,$(findstring vxWorks, $(T_A)))
+CODE_CXXFLAGS=
+endif
 
 LIBRARY_IOC += asyn
 asyn_LIBS += $(EPICS_BASE_IOC_LIBS)
 asyn_SYS_LIBS_WIN32 = ws2_32
+asyn_SYS_LIBS_cygwin32 = $(CYGWIN_RPC_LIB)
 
 SRC_DIRS += $(ASYN)/asynDriver
 INC += asynDriver.h
@@ -42,47 +51,67 @@ DBD += drvAsynIPPort.dbd
 INC += drvAsynIPServerPort.h
 
 SRC_DIRS += $(ASYN)/interfaces
-INC += asynInt32.h asynInt32SyncIO.h
+INC += asynInt32.h         asynInt32SyncIO.h
 INC += asynUInt32Digital.h asynUInt32DigitalSyncIO.h
-INC += asynFloat64.h asynFloat64SyncIO.h
-INC += asynInt32Array.h
-INC += asynFloat64Array.h
-INC += asynOctet.h asynOctetSyncIO.h
+INC += asynFloat64.h       asynFloat64SyncIO.h
+INC += asynInt8Array.h     asynInt8ArraySyncIO.h
+INC += asynInt16Array.h    asynInt16ArraySyncIO.h
+INC += asynInt32Array.h    asynInt32ArraySyncIO.h
+INC += asynFloat32Array.h  asynFloat32ArraySyncIO.h
+INC += asynFloat64Array.h  asynFloat64ArraySyncIO.h
+INC += asynOctet.h         asynOctetSyncIO.h
+INC += asynGenericPointer.h asynGenericPointerSyncIO.h
 INC += asynCommonSyncIO.h
 INC += asynOption.h
 INC += asynDrvUser.h
-asyn_SRCS += asynInt32Base.c asynInt32SyncIO.c
-asyn_SRCS += asynInt32ArrayBase.c
+INC += asynStandardInterfaces.h
+asyn_SRCS += asynInt32Base.c         asynInt32SyncIO.c
+asyn_SRCS += asynInt8ArrayBase.c     asynInt8ArraySyncIO.c
+asyn_SRCS += asynInt16ArrayBase.c    asynInt16ArraySyncIO.c
+asyn_SRCS += asynInt32ArrayBase.c    asynInt32ArraySyncIO.c
 asyn_SRCS += asynUInt32DigitalBase.c asynUInt32DigitalSyncIO.c
-asyn_SRCS += asynFloat64Base.c asynFloat64SyncIO.c
-asyn_SRCS += asynFloat64ArrayBase.c
-asyn_SRCS += asynOctetBase.c asynOctetSyncIO.c
+asyn_SRCS += asynFloat64Base.c       asynFloat64SyncIO.c
+asyn_SRCS += asynFloat32ArrayBase.c  asynFloat32ArraySyncIO.c
+asyn_SRCS += asynFloat64ArrayBase.c  asynFloat64ArraySyncIO.c
+asyn_SRCS += asynOctetBase.c         asynOctetSyncIO.c
+asyn_SRCS += asynGenericPointerBase.c  asynGenericPointerSyncIO.c
 asyn_SRCS += asynCommonSyncIO.c
+asyn_SRCS += asynStandardInterfacesBase.c
 
 SRC_DIRS += $(ASYN)/miscellaneous
 DBD += asyn.dbd
 INC += asynShellCommands.h
+INC += asynInterposeCom.h
 INC += asynInterposeEos.h
 INC += asynInterposeFlush.h
+INC += asynPortDriver.h
 asyn_SRCS += asynShellCommands.c
+asyn_SRCS += asynInterposeCom.c
 asyn_SRCS += asynInterposeEos.c
 asyn_SRCS += asynInterposeFlush.c
+asyn_SRCS += asynPortDriver.cpp
 
 SRC_DIRS += $(ASYN)/devEpics
 DBD += devAsynOctet.dbd
 DBD += devAsynInt32.dbd
+DBD += devAsynInt8Array.dbd
+DBD += devAsynInt16Array.dbd
 DBD += devAsynInt32Array.dbd
 DBD += devAsynUInt32Digital.dbd
 DBD += devAsynFloat64.dbd
+DBD += devAsynFloat32Array.dbd
 DBD += devAsynFloat64Array.dbd
 DBD += devEpics.dbd
 INC += asynEpicsUtils.h
 asyn_SRCS += devAsynOctet.c
 asyn_SRCS += asynEpicsUtils.c
 asyn_SRCS += devAsynInt32.c
+asyn_SRCS += devAsynInt8Array.c
+asyn_SRCS += devAsynInt16Array.c
 asyn_SRCS += devAsynInt32Array.c
 asyn_SRCS += devAsynUInt32Digital.c
 asyn_SRCS += devAsynFloat64.c
+asyn_SRCS += devAsynFloat32Array.c
 asyn_SRCS += devAsynFloat64Array.c
 
 SRC_DIRS += $(ASYN)/asynRecord
@@ -146,7 +175,7 @@ vxi11core_xdr.c: ../vxi11/rpc/vxi11core_xdr.c
 	cp ../vxi11/rpc/*.[ch] .
 else
 RPCGEN_FLAGS_solaris = -M
-vxi11core_xdr.c: ../vxi11/vxi11core.rpcl ../vxi11/vxi11intr.rpcl
+vxi11core_xdr.c drvVxi11.c: ../vxi11/vxi11core.rpcl ../vxi11/vxi11intr.rpcl
 	cp ../vxi11/vxi11core.rpcl .
 	cp ../vxi11/vxi11intr.rpcl .
 	rpcgen $(RPCGEN_FLAGS_$(OS_CLASS)) vxi11core.rpcl

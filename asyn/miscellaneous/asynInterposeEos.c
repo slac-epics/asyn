@@ -31,7 +31,7 @@
 #include "asynInterposeEos.h"
 
 #define START_OUTPUT_SIZE 100
-#define INPUT_SIZE        600
+#define INPUT_SIZE        2048
 
 typedef struct eosPvt {
     char          *portName;
@@ -60,11 +60,7 @@ static void eosInExceptionHandler(asynUser *pasynUser,asynException exception);
 /* asynOctet methods */
 static asynStatus writeIt(void *ppvt,asynUser *pasynUser,
     const char *data,size_t numchars,size_t *nbytesTransfered);
-static asynStatus writeRaw(void *ppvt,asynUser *pasynUser,
-    const char *data,size_t numchars,size_t *nbytesTransfered);
 static asynStatus readIt(void *ppvt,asynUser *pasynUser,
-    char *data,size_t maxchars,size_t *nbytesTransfered,int *eomReason);
-static asynStatus readRaw(void *ppvt,asynUser *pasynUser,
     char *data,size_t maxchars,size_t *nbytesTransfered,int *eomReason);
 static asynStatus flushIt(void *ppvt,asynUser *pasynUser);
 static asynStatus registerInterruptUser(void *ppvt,asynUser *pasynUser,
@@ -80,7 +76,7 @@ static asynStatus setOutputEos(void *ppvt,asynUser *pasynUser,
 static asynStatus getOutputEos(void *ppvt,asynUser *pasynUser,
     char *eos,int eossize,int *eoslen);
 static asynOctet octet = {
-    writeIt,writeRaw,readIt,readRaw,flushIt,
+    writeIt,readIt,flushIt,
     registerInterruptUser, cancelInterruptUser,
     setInputEos,getInputEos,setOutputEos,getOutputEos
 };
@@ -175,21 +171,13 @@ static asynStatus writeIt(void *ppvt,asynUser *pasynUser,
     if(peosPvt->eosOutLen>0) {
         memcpy(&peosPvt->outBuf[numchars],peosPvt->eosOut,peosPvt->eosOutLen);
     }
-    status = peosPvt->poctet->writeRaw(peosPvt->octetPvt, pasynUser,
+    status = peosPvt->poctet->write(peosPvt->octetPvt, pasynUser,
          peosPvt->outBuf,(numchars + peosPvt->eosOutLen),&nbytesActual);
-    asynPrintIO(pasynUser,ASYN_TRACE_FLOW,peosPvt->outBuf,nbytesActual,
-            "%s write\n",peosPvt->portName);
+    if (status!=asynError)
+        asynPrintIO(pasynUser,ASYN_TRACEIO_FILTER,peosPvt->outBuf,nbytesActual,
+                "%s wrote\n",peosPvt->portName);
     *nbytesTransfered = (nbytesActual>numchars) ? numchars : nbytesActual;
     return status;
-}
-
-static asynStatus writeRaw(void *ppvt,asynUser *pasynUser,
-    const char *data,size_t numchars,size_t *nbytesTransfered)
-{
-    eosPvt *peosPvt = (eosPvt *)ppvt;
-
-    return peosPvt->poctet->writeRaw(peosPvt->octetPvt,
-        pasynUser,data,numchars,nbytesTransfered);
 }
 
 static asynStatus readIt(void *ppvt,asynUser *pasynUser,
@@ -198,13 +186,12 @@ static asynStatus readIt(void *ppvt,asynUser *pasynUser,
     eosPvt *peosPvt = (eosPvt *)ppvt;
     size_t thisRead;
     int nRead = 0;
+    int eom = 0;
     asynStatus status = asynSuccess;
-
     if(!peosPvt->processEosIn) {
         return peosPvt->poctet->read(peosPvt->octetPvt,
             pasynUser,data,maxchars,nbytesTransfered,eomReason);
     }
-    if(eomReason) *eomReason = 0;
     for (;;) {
         if ((peosPvt->inBufTail != peosPvt->inBufHead)) {
             char c = *data++ = peosPvt->inBuf[peosPvt->inBufTail++];
@@ -216,7 +203,7 @@ static asynStatus readIt(void *ppvt,asynUser *pasynUser,
                         nRead -= peosPvt->eosInLen;
                         data -= peosPvt->eosInLen;
                         *(data+1) = 0;
-                        if(eomReason) *eomReason |= ASYN_EOM_EOS;
+                        eom |= ASYN_EOM_EOS;
                         break;
                     }
                 } else {
@@ -235,61 +222,30 @@ static asynStatus readIt(void *ppvt,asynUser *pasynUser,
                 }
             }
             if (nRead >= maxchars)  {
-                if(eomReason) *eomReason |= ASYN_EOM_CNT;
+                eom |= ASYN_EOM_CNT;
                 break;
             }
             continue;
         }
-        if(eomReason && *eomReason) break;
-        status = peosPvt->poctet->readRaw(peosPvt->octetPvt,
-             pasynUser,peosPvt->inBuf,peosPvt->inBufSize,&thisRead,eomReason);
+        if(eom) break;
+        status = peosPvt->poctet->read(peosPvt->octetPvt,
+             pasynUser,peosPvt->inBuf,peosPvt->inBufSize,&thisRead,&eom);
         if(status==asynSuccess) {
-            asynPrintIO(pasynUser,ASYN_TRACE_FLOW,peosPvt->inBuf,thisRead,
+            asynPrintIO(pasynUser,ASYN_TRACEIO_FILTER,peosPvt->inBuf,thisRead,
                 "%s read\n",peosPvt->portName);
-        /* readRaw could have returned *eomReason=ASYN_EOM_CNT because the number of octets available
-         * exceeded inBufSize.  This is not a reason for us to stop reading, so set eomReason to 0. */
-        if(eomReason && *eomReason == ASYN_EOM_CNT) *eomReason = 0;
+            /*
+             * Read could have returned with ASYN_EOM_CNT set in eom because
+             * the number of octets available exceeded inBufSize.  This is not
+             * a reason for us to stop reading.
+             */
+            eom &= ~ASYN_EOM_CNT;
         }
         if(status!=asynSuccess || thisRead==0) break;
         peosPvt->inBufTail = 0;
         peosPvt->inBufHead = thisRead;
     }
     if(nRead<maxchars) *data = 0; /*null terminate string if room*/
-    *nbytesTransfered = nRead;
-    return status;
-}
-
-static asynStatus readRaw(void *ppvt,asynUser *pasynUser,
-    char *data,size_t maxchars,size_t *nbytesTransfered,int *eomReason)
-{
-    eosPvt *peosPvt = (eosPvt *)ppvt;
-    size_t thisRead;
-    int nRead = 0;
-    asynStatus status = asynSuccess;
-
-    if(!peosPvt->processEosIn) {
-        return peosPvt->poctet->readRaw(peosPvt->octetPvt,
-            pasynUser,data,maxchars,nbytesTransfered,eomReason);
-    }
-    if(eomReason) *eomReason = 0;
-    for (;;) {
-        if ((peosPvt->inBufTail != peosPvt->inBufHead)) {
-            *data++ = peosPvt->inBuf[peosPvt->inBufTail++];
-            nRead++;
-            if (nRead >= maxchars) break;
-            continue;
-        }
-        if(eomReason && *eomReason) break;
-        status = peosPvt->poctet->readRaw(peosPvt->octetPvt,
-             pasynUser,peosPvt->inBuf,peosPvt->inBufSize,&thisRead,eomReason);
-        if(status==asynSuccess) {
-            asynPrintIO(pasynUser,ASYN_TRACE_FLOW,peosPvt->inBuf,thisRead,
-                "%s read\n",peosPvt->portName);
-        }
-        if(status!=asynSuccess || thisRead==0) break;
-        peosPvt->inBufTail = 0;
-        peosPvt->inBufHead = thisRead;
-    }
+    if (eomReason) *eomReason = eom;
     *nbytesTransfered = nRead;
     return status;
 }

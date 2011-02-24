@@ -497,7 +497,7 @@ static int readArbitraryBlockProgramData(gpibDpvt *pgpibDpvt)
         }
         *buf++= '#';
         bufSize -= nread + 1;
-        status = pasynOctet->readRaw(asynOctetPvt,pasynUser,buf,1,&nread,0);
+        status = pasynOctet->read(asynOctetPvt,pasynUser,buf,1,&nread,0);
         if (status != asynSuccess) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                  "Error reading arbitrary block program data number of digits");
@@ -521,7 +521,7 @@ static int readArbitraryBlockProgramData(gpibDpvt *pgpibDpvt)
                                       "Arbitrary block program data too long");
             return -1;
         }
-        status = pasynOctet->readRaw(asynOctetPvt,pasynUser,buf,count,&nread,0);
+        status = pasynOctet->read(asynOctetPvt,pasynUser,buf,count,&nread,0);
         if (status!=asynSuccess) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                   "Error reading arbitrary block program data number of bytes");
@@ -542,13 +542,19 @@ static int readArbitraryBlockProgramData(gpibDpvt *pgpibDpvt)
         buf += nread;
         bufSize -= nread;
         count = ltmp;
-        status = pasynOctet->readRaw(asynOctetPvt,pasynUser,buf,count,&nread,0);
-        if (status!=asynSuccess || nread != count) {
-            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+        pasynOctet->setInputEos(asynOctetPvt,pasynUser,NULL,0);
+        while (count) {
+            status = pasynOctet->read(asynOctetPvt,pasynUser,buf,count,&nread,0);
+            if (status!=asynSuccess) {
+                pasynOctet->setInputEos(asynOctetPvt,pasynUser,saveEos,saveEosLen);
+                epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                                  "Error reading arbitrary block program data");
-            return -1;
+                return -1;
+            }
+            count -= nread;
+            buf += nread;
         }
-        buf += nread;
+        pasynOctet->setInputEos(asynOctetPvt,pasynUser,saveEos,saveEosLen);
         status = pasynOctet->read(asynOctetPvt,pasynUser,saveEos,1,&nread,0);
         if (status!=asynSuccess) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
@@ -861,6 +867,8 @@ static void prepareToRead(gpibDpvt *pgpibDpvt,int failure)
     gpibCmd *pgpibCmd = gpibCmdGet(pgpibDpvt);
     int cmdType = pgpibCmd->type;
     devGpibPvt *pdevGpibPvt = pgpibDpvt->pdevGpibPvt;
+    asynOctet *pasynOctet = pgpibDpvt->pasynOctet;
+    void *asynOctetPvt = pgpibDpvt->asynOctetPvt;
     int nchars = 0, lenmsg = 0;
     asynStatus status;
 
@@ -881,6 +889,14 @@ static void prepareToRead(gpibDpvt *pgpibDpvt,int failure)
         if(!pgpibCmd->cmd) {
             asynPrint(pasynUser,ASYN_TRACE_ERROR,
                 "%s pgpibCmd->cmd is null\n",precord->name);
+            failure = -1; break;
+        }
+        status = pasynOctet->flush(asynOctetPvt,pasynUser);
+        if(status != asynSuccess) {
+            asynPrint(pasynUser,ASYN_TRACE_ERROR,
+                "%s flush error\n",
+                precord->name);
+            recGblSetSevr(precord,WRITE_ALARM, INVALID_ALARM);
             failure = -1; break;
         }
         lenmsg = strlen(pgpibCmd->cmd);

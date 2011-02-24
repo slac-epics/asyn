@@ -110,8 +110,8 @@ static int echoDriverInit(const char *dn, double delay,
         return 0;
     }
 
-    pasynOctet->writeRaw = echoWrite;
-    pasynOctet->readRaw = echoRead;
+    pasynOctet->write = echoWrite;
+    pasynOctet->read = echoRead;
     pasynOctet->flush = echoFlush;
     pasynOctet->setInputEos = setEos;
     pasynOctet->getInputEos = getEos;
@@ -171,6 +171,8 @@ static asynStatus connect(void *drvPvt,asynUser *pasynUser)
                pechoPvt->portName);
             return asynError;
         }
+        /* simulate connection delay */
+        if(pechoPvt->delay>0.0) epicsThreadSleep(pechoPvt->delay*10.);
         pechoPvt->connected = 1;
         pechoPvt->device[0].connected = 1;
         pasynManager->exceptionConnect(pasynUser);
@@ -183,6 +185,8 @@ static asynStatus connect(void *drvPvt,asynUser *pasynUser)
                pechoPvt->portName);
             return asynError;
         }
+        /* simulate connection delay */
+        if(pechoPvt->delay>0.0) epicsThreadSleep(pechoPvt->delay*10);
         pechoPvt->connected = 1;
         pasynManager->exceptionConnect(pasynUser);
         return asynSuccess;
@@ -199,6 +203,8 @@ static asynStatus connect(void *drvPvt,asynUser *pasynUser)
             pechoPvt->portName,addr);
         return asynError;
     }
+    /* simulate connection delay */
+    if(pechoPvt->delay>0.0) epicsThreadSleep(pechoPvt->delay*10.);
     pdeviceInfo->connected = 1;
     pasynManager->exceptionConnect(pasynUser);
     return(asynSuccess);

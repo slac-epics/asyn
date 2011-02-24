@@ -137,12 +137,13 @@ static void initialize(SS_ID ssId, struct UserVar *pVar)
 static int readSocket(SS_ID ssId, struct UserVar *pVar)
 {
     char buffer[BUFFER_SIZE];
-    int nread, eomReason;
+    size_t nread;
+    int eomReason;
     asynUser *pasynUser = (asynUser *)pVar->pasynUser;
     asynStatus status;
 
     status = pasynOctetSyncIO->read(pasynUser, buffer, BUFFER_SIZE,
-                                    0.0, &nread, &eomReason);
+                                    -1.0, &nread, &eomReason);
     if (status) {
         asynPrint(pasynUser, ASYN_TRACE_ERROR,
                   "ipSNCServer:readSocket: read error on: %s: %s\n",
@@ -161,7 +162,7 @@ static int readSocket(SS_ID ssId, struct UserVar *pVar)
 
 static int writeSocket(SS_ID ssId, struct UserVar *pVar)
 {
-    int nwrite;
+    size_t nwrite;
     asynUser *pasynUser = (asynUser *)pVar->pasynUser;
     asynStatus status;
 

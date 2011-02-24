@@ -52,79 +52,93 @@ typedef struct setOptionArgs {
 
 typedef struct showOptionArgs {
     const char     *key;
+    char            val[100];
     asynOption     *pasynOption;
     void           *drvPvt;
     epicsEventId   done;
 }showOptionArgs;
-
+
+static asynStatus
+findInterface(const char *portName, int addr, const char *interfaceType,
+                        void (*handler)(asynUser *),
+                        asynUser **ppasynUser, asynInterface **ppasynInterface)
+{
+    if (portName == NULL) {
+        printf("Missing portName argument\n");
+        return asynError;
+    }
+    *ppasynUser = pasynManager->createAsynUser(handler, 0);
+    if (pasynManager->connectDevice(*ppasynUser, portName, addr) != asynSuccess) {
+        printf("Port %s connectDevice failed: %s\n", portName, (*ppasynUser)->errorMessage);
+        pasynManager->freeAsynUser(*ppasynUser);
+        return asynError;
+    }
+    *ppasynInterface = pasynManager->findInterface(*ppasynUser, interfaceType, 1);
+    if (!*ppasynInterface) {
+        printf("Port %s does not provide required %s interface\n", portName, interfaceType);
+        pasynManager->freeAsynUser(*ppasynUser);
+        return asynError;
+    }
+    return asynSuccess;
+}
+
 static void setOption(asynUser *pasynUser)
 {
     setOptionArgs *poptionargs = (setOptionArgs *)pasynUser->userPvt;
     asynStatus status;
 
     status = poptionargs->pasynOption->setOption(poptionargs->drvPvt,
-            pasynUser,poptionargs->key,poptionargs->val);
+                                pasynUser, poptionargs->key, poptionargs->val);
     if(status!=asynSuccess) 
-        printf("setOption failed %s\n",pasynUser->errorMessage);
+        printf("setOption failed %s\n", pasynUser->errorMessage);
     epicsEventSignal(poptionargs->done);
 }
 
 epicsShareFunc int
  asynSetOption(const char *portName, int addr, const char *key, const char *val)
 {
+    asynUser *pasynUser;
     asynInterface *pasynInterface;
     setOptionArgs optionargs;
-    asynUser *pasynUser;
-    asynStatus status;
 
-    if ((portName == NULL) || (key == NULL) || (val == NULL)) {
-        printf("Missing argument\n");
+    if ((key == NULL) || (val == NULL)) {
+        printf("Missing key/value argument\n");
         return asynError;
     }
-    pasynUser = pasynManager->createAsynUser(setOption,0);
+    if (findInterface(portName, addr, asynOptionType, setOption,
+                                    &pasynUser, &pasynInterface) != asynSuccess)
+        return asynError;
+    pasynUser->timeout = 2;
     pasynUser->userPvt = &optionargs;
-    status = pasynManager->connectDevice(pasynUser,portName,addr);
-    if(status!=asynSuccess) {
-        printf("connectDevice failed %s\n",pasynUser->errorMessage);
-        pasynManager->freeAsynUser(pasynUser);
-        return asynError;
-    }
-    pasynInterface = pasynManager->findInterface(pasynUser,asynOptionType,1);
-    if(!pasynInterface) {
-        printf("port %s does not support get/set option\n",portName);
-        return asynError;
-    }
+    pasynUser->reason = ASYN_REASON_QUEUE_EVEN_IF_NOT_CONNECTED;
     optionargs.pasynOption = (asynOption *)pasynInterface->pinterface;
     optionargs. drvPvt = pasynInterface->drvPvt;
     optionargs.key = key;
     optionargs.val = val;
     optionargs.done = epicsEventMustCreate(epicsEventEmpty);
-    status = pasynManager->queueRequest(pasynUser,asynQueuePriorityLow,0.0);
-    if(status!=asynSuccess) {
-        printf("queueRequest failed %s\n",pasynUser->errorMessage);
+    if (pasynManager->queueRequest(pasynUser,asynQueuePriorityConnect,0.0) != asynSuccess) {
+        printf("queueRequest failed: %s\n", pasynUser->errorMessage);
+        epicsEventDestroy(optionargs.done);
         pasynManager->freeAsynUser(pasynUser);
         return asynError;
     }
     epicsEventWait(optionargs.done);
     epicsEventDestroy(optionargs.done);
     pasynManager->freeAsynUser(pasynUser);
-    return 0;
+    return asynSuccess;
 }
 
 static void showOption(asynUser *pasynUser)
 {
     showOptionArgs *poptionargs = (showOptionArgs *)pasynUser->userPvt;
     asynStatus status;
-    char val[100];
 
-    pasynUser->errorMessage[0] = '\0';
     status = poptionargs->pasynOption->getOption(poptionargs->drvPvt,
-        pasynUser,poptionargs->key,val,sizeof(val));
-    if(status!=asynSuccess) {
-        printf("getOption failed %s\n",pasynUser->errorMessage);
-    } else {
-        printf("%s=%s\n",poptionargs->key,val);
-    }
+        pasynUser, poptionargs->key, poptionargs->val, sizeof(poptionargs->val));
+    if(status != asynSuccess)
+        printf("getOption failed %s\n", pasynUser->errorMessage);
+    else
+        printf("%s=%s\n", poptionargs->key, poptionargs->val);
     epicsEventSignal(poptionargs->done);
 }
 
@@ -134,34 +148,31 @@ epicsShareFunc int
     asynInterface *pasynInterface;
     showOptionArgs optionargs;
     asynUser *pasynUser;
-    asynStatus status;
 
-    if ((portName == NULL) || (key == NULL) ) {
-        printf("Missing argument\n");
+    if (key == NULL) {
+        printf("Missing key argument\n");
         return asynError;
     }
-    pasynUser = pasynManager->createAsynUser(showOption,0);
+    if (findInterface(portName, addr, asynOptionType, showOption,
+                                    &pasynUser, &pasynInterface) != asynSuccess)
+        return asynError;
+    pasynUser->timeout = 2;
     pasynUser->userPvt = &optionargs;
-    status = pasynManager->connectDevice(pasynUser,portName,addr);
-    if(status!=asynSuccess) {
-        printf("connectDevice failed %s\n",pasynUser->errorMessage);
-        pasynManager->freeAsynUser(pasynUser);
-        return 1;
-    }
-    pasynInterface = pasynManager->findInterface(pasynUser,asynOptionType,0);
-    if(!pasynInterface) {
-        printf("port %s does not support get/set option\n",portName);
-        return asynError;
-    }
+    pasynUser->reason = ASYN_REASON_QUEUE_EVEN_IF_NOT_CONNECTED;
     optionargs.pasynOption = (asynOption *)pasynInterface->pinterface;
     optionargs.drvPvt = pasynInterface->drvPvt;
     optionargs.key = key;
     optionargs.done = epicsEventMustCreate(epicsEventEmpty);
-    status = pasynManager->queueRequest(pasynUser,0,0.0);
+    if (pasynManager->queueRequest(pasynUser,asynQueuePriorityConnect,0.0) != asynSuccess) {
+        printf("queueRequest failed: %s\n", pasynUser->errorMessage);
+        epicsEventDestroy(optionargs.done);
+        pasynManager->freeAsynUser(pasynUser);
+        return asynError;
+    }
     epicsEventWait(optionargs.done);
     epicsEventDestroy(optionargs.done);
     pasynManager->freeAsynUser(pasynUser);
-    return 0;
+    return asynSuccess;
 }
 
 /* Default timeout for reading */
@@ -169,7 +180,7 @@ epicsShareFunc int
 /* Default buffer size  */
 #define BUFFER_SIZE 160
 
-static void* asynHash=NULL;
+static struct gphPvt* asynHash=NULL;
 
 static asynIOPvt* asynFindEntry(const char *name)
 {
@@ -183,7 +194,7 @@ static asynIOPvt* asynFindEntry(const char *name)
     return((asynIOPvt *)hashEntry->userPvt);
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetConnect(const char *entry, const char *port, int addr,
              int timeout, int buffer_len, const char *drvInfo)
 {
@@ -216,7 +227,7 @@ epicsShareFunc epicsShareFunc int
     return(0);
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetDisconnect(const char *entry)
 {
     asynIOPvt *pPvt;
@@ -249,7 +260,7 @@ epicsShareFunc epicsShareFunc int
     return(0);
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetRead(const char *entry, int nread)
 {
     asynStatus status;
@@ -280,7 +291,7 @@ epicsShareFunc epicsShareFunc int
     return(ninp);
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetWrite(const char *entry, const char *output)
 {
     asynStatus status;
@@ -296,7 +307,7 @@ epicsShareFunc epicsShareFunc int
     }
     pasynUser = pPvt->pasynUser;
 
-    if (strlen(output) > pPvt->write_buffer_len) {
+    if (strlen(output) > (size_t)pPvt->write_buffer_len) {
        asynPrint(pasynUser, ASYN_TRACE_ERROR,
                  "Error writing, buffer too small\n");
        return(-1);
@@ -313,7 +324,7 @@ epicsShareFunc epicsShareFunc int
     return(nout);
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetWriteRead(const char *entry, const char *output, int nread)
 {
     asynStatus status;
@@ -331,7 +342,7 @@ epicsShareFunc epicsShareFunc int
     }
     pasynUser = pPvt->pasynUser;
 
-    if (strlen(output) > pPvt->write_buffer_len) {
+    if (strlen(output) > (size_t)pPvt->write_buffer_len) {
        asynPrint(pasynUser, ASYN_TRACE_ERROR,
                  "Error writing, buffer too small\n");
        return(-1);
@@ -355,7 +366,7 @@ epicsShareFunc epicsShareFunc int
     return(ninp);
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetFlush(const char *entry)
 {
     asynIOPvt *pPvt;
@@ -378,7 +389,7 @@ epicsShareFunc epicsShareFunc int
     return(0);
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetSetInputEos(const char *portName, int addr,
     const char *eosin,const char *drvInfo)
 {
@@ -400,7 +411,7 @@ epicsShareFunc epicsShareFunc int
     return (status==asynSuccess) ? 0 : -1;
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetGetInputEos(const char *portName, int addr,const char *drvInfo)
 {
     char eos[2],eostran[10];
@@ -425,7 +436,7 @@ epicsShareFunc epicsShareFunc int
     return -1;
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetSetOutputEos(const char *portName, int addr,
     const char *eosin,const char *drvInfo)
 {
@@ -447,7 +458,7 @@ epicsShareFunc epicsShareFunc int
     return (status==asynSuccess) ? 0 : -1;
 }
 
-epicsShareFunc epicsShareFunc int
+epicsShareFunc int
     asynOctetGetOutputEos(const char *portName, int addr,const char *drvInfo)
 {
     char eos[2],eostran[10];
@@ -471,7 +482,37 @@ epicsShareFunc epicsShareFunc int
     printf("%s\n",eostran);
     return -1;
 }
-
+
+epicsShareFunc int
+    asynWaitConnect(const char *portName, double timeout)
+{
+    asynUser      *pasynUser=NULL;
+    int           isConnected=0;
+    asynStatus    status;
+ 
+    pasynUser = pasynManager->createAsynUser(0,0);
+    if (!pasynUser) {
+        asynPrint(pasynUser, ASYN_TRACE_ERROR, 
+            "waitConnect: port=%s error calling createAsynUser\n", 
+            portName);
+        return asynError;
+    }
+    status = pasynManager->connectDevice(pasynUser, portName, -1);
+    if (status) {
+        asynPrint(pasynUser, ASYN_TRACE_ERROR, 
+            "waitConnect: port=%s error calling connectDevice\n",
+            portName);
+        return asynError;
+    }
+    status = pasynManager->waitConnect(pasynUser, timeout);
+    if (status == asynSuccess) isConnected = 1;
+    asynPrint(pasynUser, ASYN_TRACE_FLOW, 
+        "waitConnect: port=%s exit, isConnected=%d\n", 
+        portName, isConnected);
+    pasynManager->freeAsynUser(pasynUser);
+    if (isConnected) return asynSuccess; 
+    return asynError;
+}
 static const iocshArg asynReportArg0 = {"level", iocshArgInt};
 static const iocshArg asynReportArg1 = {"port", iocshArgString};
 static const iocshArg *const asynReportArgs[] = {
@@ -519,21 +560,23 @@ static const iocshFuncDef asynSetTraceMaskDef =
 epicsShareFunc int
  asynSetTraceMask(const char *portName,int addr,int mask)
 {
-    asynUser *pasynUser;
+    asynUser *pasynUser=NULL;
     asynStatus status;
 
-    pasynUser = pasynManager->createAsynUser(0,0);
-    status = pasynManager->connectDevice(pasynUser,portName,addr);
-    if((status!=asynSuccess) && (strlen(portName)!=0)) {
-        printf("%s\n",pasynUser->errorMessage);
-        pasynManager->freeAsynUser(pasynUser);
-        return -1;
+    if (portName && (strlen(portName) > 0)) {
+        pasynUser = pasynManager->createAsynUser(0,0);
+        status = pasynManager->connectDevice(pasynUser,portName,addr);
+        if(status!=asynSuccess) {
+            printf("%s\n",pasynUser->errorMessage);
+            pasynManager->freeAsynUser(pasynUser);
+            return -1;
+        }
     }
     status = pasynTrace->setTraceMask(pasynUser,mask);
     if(status!=asynSuccess) {
         printf("%s\n",pasynUser->errorMessage);
     }
-    pasynManager->freeAsynUser(pasynUser);
+    if (pasynUser) pasynManager->freeAsynUser(pasynUser);
     return 0;
 }
 static void asynSetTraceMaskCall(const iocshArgBuf * args) {
@@ -553,21 +596,23 @@ static const iocshFuncDef asynSetTraceIOMaskDef =
 epicsShareFunc int
  asynSetTraceIOMask(const char *portName,int addr,int mask)
 {
-    asynUser *pasynUser;
+    asynUser *pasynUser=NULL;
     asynStatus status;
 
-    pasynUser = pasynManager->createAsynUser(0,0);
-    status = pasynManager->connectDevice(pasynUser,portName,addr);
-    if(status!=asynSuccess) {
-        printf("%s\n",pasynUser->errorMessage);
-        pasynManager->freeAsynUser(pasynUser);
-        return -1;
+    if (portName && (strlen(portName) > 0)) {
+        pasynUser = pasynManager->createAsynUser(0,0);
+        status = pasynManager->connectDevice(pasynUser,portName,addr);
+        if(status!=asynSuccess) {
+            printf("%s\n",pasynUser->errorMessage);
+            pasynManager->freeAsynUser(pasynUser);
+            return -1;
+        }
     }
     status = pasynTrace->setTraceIOMask(pasynUser,mask);
     if(status!=asynSuccess) {
         printf("%s\n",pasynUser->errorMessage);
     }
-    pasynManager->freeAsynUser(pasynUser);
+    if (pasynUser) pasynManager->freeAsynUser(pasynUser);
     return 0;
 }
 static void asynSetTraceIOMaskCall(const iocshArgBuf * args) {
@@ -593,7 +638,9 @@ epicsShareFunc int
     }
     if(!filename) {
         fp = 0;
-    } else if(strlen(filename)==0 || strcmp(filename,"stdout")==0) {
+    } else if(strlen(filename)==0 || strcmp(filename,"stderr")==0) {
+        fp = stderr;
+    } else if(strcmp(filename,"stdout")==0) {
         fp = stdout;
     } else {
         fp = fopen(filename,"w");
@@ -868,6 +915,29 @@ static void asynOctetGetOutputEosCall(const iocshArgBuf * args) {
     asynOctetGetOutputEos( portName, addr, drvInfo);
 }
 
+static const iocshArg asynWaitConnectArg0 = {"portName", iocshArgString};
+static const iocshArg asynWaitConnectArg1 = {"timeout", iocshArgDouble};
+static const iocshArg *const asynWaitConnectArgs[] = {
+    &asynWaitConnectArg0, &asynWaitConnectArg1};
+static const iocshFuncDef asynWaitConnectDef =
+    {"asynWaitConnect", 2, asynWaitConnectArgs};
+static void asynWaitConnectCall(const iocshArgBuf * args) {
+    const char *portName   = args[0].sval;
+    double timeout         = args[1].dval;
+    asynWaitConnect( portName, timeout);
+}
+
+static const iocshArg asynSetAutoConnectTimeoutArg0 = {"timeout", iocshArgDouble};
+static const iocshArg *const asynSetAutoConnectTimeoutArgs[] = {
+    &asynSetAutoConnectTimeoutArg0};
+static const iocshFuncDef asynSetAutoConnectTimeoutDef =
+    {"asynSetAutoConnectTimeout", 1, asynSetAutoConnectTimeoutArgs};
+static void asynSetAutoConnectTimeoutCall(const iocshArgBuf * args) {
+    double timeout = args[0].dval;
+    pasynManager->setAutoConnectTimeout(timeout);
+}
+
+
 static void asynRegister(void)
 {
     static int firstTime = 1;
@@ -892,5 +962,7 @@ static void asynRegister(void)
     iocshRegister(&asynOctetGetInputEosDef,asynOctetGetInputEosCall);
     iocshRegister(&asynOctetSetOutputEosDef,asynOctetSetOutputEosCall);
     iocshRegister(&asynOctetGetOutputEosDef,asynOctetGetOutputEosCall);
+    iocshRegister(&asynWaitConnectDef,asynWaitConnectCall);
+    iocshRegister(&asynSetAutoConnectTimeoutDef,asynSetAutoConnectTimeoutCall);
 }
 epicsExportRegistrar(asynRegister);

@@ -1,31 +1,30 @@
-%% LyX 1.3 created this file.  For more info, see http://www.lyx.org/.
+%% LyX 1.6.2 created this file.  For more info, see http://www.lyx.org/.
 %% Do not edit unless you really know what you are doing.
 \documentclass[twoside,english]{article}
-\usepackage{times}
+\usepackage{mathptmx}
 \usepackage[T1]{fontenc}
-\usepackage[latin1]{inputenc}
+\usepackage[latin9]{inputenc}
 \setcounter{tocdepth}{2}
+\usepackage{url}
 
-\makeatletter
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
 %% Because html converters don't know tabularnewline
 \providecommand{\tabularnewline}{\\}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
- \newenvironment{lyxcode}
-   {\begin{list}{}{
-     \setlength{\rightmargin}{\leftmargin}
-     \setlength{\listparindent}{0pt}% needed for AMS classes
-     \raggedright
-     \setlength{\itemsep}{0pt}
-     \setlength{\parsep}{0pt}
-     \normalfont\ttfamily}%
-    \item[]}
-   {\end{list}}
+\newenvironment{lyxcode}
+{\par\begin{list}{}{
+\setlength{\rightmargin}{\leftmargin}
+\setlength{\listparindent}{0pt}% needed for AMS classes
+\raggedright
+\setlength{\itemsep}{0pt}
+\setlength{\parsep}{0pt}
+\normalfont\ttfamily}%
+ \item[]}
+{\end{list}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
-\usepackage{hevea}
 \usepackage{moreverb}
 \usepackage{url}
 
@@ -43,14 +42,14 @@
 %HEVEA \def{\textbackslash}{$\backslash$} % No \textbackslash in hevea.
 
 \usepackage{babel}
-\makeatother
+
 \begin{document}
 
 \title{How to create EPICS device support for a simple serial or GPIB device}
 
 
 \author{W. Eric Norum\\
-\mailto{norume@aps.anl.gov}}
+norume.aps.anl.gov \url{mailto:norume@aps.anl.gov}}
 
 \maketitle
 
@@ -61,14 +60,13 @@ EPICS support for a simple serial or GPIB (IEEE-488) device. The steps
 are presented in a way that should make it possible to apply them
 in cookbook fashion to create support for other devices. For comprehensive
 description of all the details of the I/O system used here, refer
-to the \ahref{../asynDriver.html}{asynDriver} and \ahref{../devGpib.html}{devGpib}
+to the asynDriver \url{../asynDriver.html} and devGpib \url{../devGpib.html}
 documentation.
 
 This document isn't for the absolute newcomer though. You must have
 EPICS installed on a system somewhere and know how to build and run
 the example application. In particular you must have the following
 installed: 
-
 \begin{itemize}
 \item EPICS R3.14.6 or higher.
 \item EPICS modules/soft/asyn version 4.0 or higher.
@@ -85,12 +83,8 @@ in controlling some other device so you won't be able to use the information
 directly. I chose the AB300 as the basis for this tutorial since the
 AB300 has a very limited command set, which keeps this document small,
 and yet has commands which raise many of the issues that you'll have
-to consider when writing support for other devices.
-
-\begin{htmlonly}
-If you'd like to print this tutorial you can download a
-\ahref{tutorial.pdf}{PDF version}.
-\end{htmlonly}
+to consider when writing support for other devices. If you'd like
+to print this tutorial you can download PDF version \url{tutorial.pdf}.
 
 
 \section{Determine the required I/O operations}
@@ -105,26 +99,21 @@ with them are shown in table~\ref{commandList}.
 
 %
 \begin{table}
-
 \caption{AB300 filter wheel commands\label{commandList}}
 
-\begin{center}\begin{tabular}{|l|l|}
+
+\centering{}\begin{tabular}{|l|l|}
 \hline 
 \multicolumn{2}{|l|}{CVI Laser Corporation AB300 filter wheel}\tabularnewline
 \hline
-\multicolumn{1}{|l|}{Command}&
-\multicolumn{1}{l|}{EPICS record type}\tabularnewline
+\multicolumn{1}{|l|}{Command} & \multicolumn{1}{l|}{EPICS record type}\tabularnewline
 \hline
-Reset &
-longout \tabularnewline
-Go to new position &
-longout \tabularnewline
-Query position &
-longin \tabularnewline
-Query status &
-longin  \tabularnewline
+Reset  & longout \tabularnewline
+Go to new position  & longout \tabularnewline
+Query position  & longin \tabularnewline
+Query status  & longin  \tabularnewline
 \hline
-\end{tabular}\end{center}
+\end{tabular}
 \end{table}
 
 
@@ -143,7 +132,6 @@ ASYN package.
 
 Here are the commands I ran. You'll have to change the \texttt{/home/EPICS/modules/soft/asyn}
 to the path where your EPICS ASYN driver is installed.
-
 \begin{lyxcode}
 norume>~\textrm{\textbf{mkdir~ab300}}~\\
 norume>~\textrm{\textbf{cd~ab300}}~\\
@@ -155,7 +143,6 @@ norume>~\textrm{\textbf{/home/EPICS/modules/soft/asyn/bin/linux-x86/makeSupport.
 Edit the \texttt{configure/RELEASE} file which makeSupport.pl created
 and confirm that the entries describing the paths to your EPICS base
 and ASYN support are correct. For example these might be:
-
 \begin{lyxcode}
 ASYN=/home/EPICS/modules/soft/asyn
 
@@ -166,7 +153,6 @@ and specify the IOC architectures on which the application is to run.
 I wanted the application to run as a soft IOC, so I uncommented the
 \texttt{CROSS\_COMPILER\_TARGET\_ARCHS} definition and set the definition
 to be empty: 
-
 \begin{lyxcode}
 CROSS\_COMPILER\_TARGET\_ARCHS~=
 \end{lyxcode}
@@ -191,7 +177,6 @@ Since the AB300 provides only longin and longout records most of the
 of the way that the device initialization is performed you must define
 an analog-in DSET even if the device provides no analog-in records
 (as is the case for the AB300).
-
 \begin{lyxcode}
 \#define~DSET\_AI~~~~devAiAB300~\\
 \#define~DSET\_LI~~~~devLiAB300~\\
@@ -203,7 +188,6 @@ an analog-in DSET even if the device provides no analog-in records
 The default value of \texttt{TIMEWINDOW} (2 seconds) is reasonable
 for the AB300, but I increased the value of \texttt{TIMEOUT} to 5~seconds
 since the filter wheel can be slow in responding.
-
 \begin{lyxcode}
 \#define~TIMEOUT~~~~~5.0~~~~/{*}~I/O~must~complete~within~this~time~{*}/~\\
 \#define~TIMEWINDOW~~2.0~~~~/{*}~Wait~this~long~after~device~timeout~{*}/
@@ -230,23 +214,21 @@ the I/O operation to read or write that value.
 
 The command array entries I created for the AB300 are shown below.
 The elements of each entry are described using the names from the
-\ahref{../devGpib.html}{GPIB documentation}. 
+GPIB documentation \url{../devGpib.html}. 
 
 
 \paragraph{Command array index 0 -- Device Reset}
-
 \begin{lyxcode}
-\{\&DSET\_LO,~GPIBWRITE,~IB\_Q\_LOW,~NULL,~\char`\"{}\textbackslash{}377\textbackslash{}377\textbackslash{}033\char`\"{},~10,~10,~\\
-~~~~~~~NULL,~0,~0,~NULL,~NULL,~\char`\"{}\textbackslash{}033\char`\"{}\},
-\end{lyxcode}
+\{\&DSET\_LO,~GPIBWRITE,~IB\_Q\_LOW,~NULL,~\textquotedbl{}\textbackslash{}377\textbackslash{}377\textbackslash{}033\textquotedbl{},~10,~10,~\\
+~~~~~~~NULL,~0,~0,~NULL,~NULL,~\textquotedbl{}\textbackslash{}033\textquotedbl{}\},\end{lyxcode}
 \begin{description}
-\item [dset]This command is associated with an longout record. 
-\item [type]A WRITE operation is to be performed. 
-\item [pri]This operation will be placed on the low-priority queue of I/O
-requests. 
-\item [cmd]Because this is a GPIBWRITE operation this element is unused. 
-\item [format]The format string to generate the command to be sent to the
-device. The first two bytes are the RESET command, the third byte
+\item [{dset}] This command is associated with an longout record. 
+\item [{type}] A WRITE operation is to be performed. 
+\item [{pri}] This operation will be placed on the low-priority queue of
+I/O requests. 
+\item [{cmd}] Because this is a GPIBWRITE operation this element is unused. 
+\item [{format}] The format string to generate the command to be sent to
+the device. The first two bytes are the RESET command, the third byte
 is the ECHO command. The AB300 sends no response to a reset command
 so I send the 'ECHO' to verify that the device is responding. The
 AB300 resets itself fast enough that it can see an echo command immediately
@@ -257,16 +239,16 @@ Note that the process variable value is not used (there's no printf
 \texttt{\%} format character in the command string). The AB300 is
 reset whenever the EPICS record is processed. 
 
-\item [rspLen]The size of the readback buffer. Although only one readback
+\item [{rspLen}] The size of the readback buffer. Although only one readback
 byte is expected I allow for a few extra bytes just in case. 
-\item [msgLen]The size of the buffer into which the command string is placed.
-I allowed a little extra space in case a longer command is used some
-day. 
-\item [convert]No special conversion function is needed. 
-\item [P1,P2,P3]There's no special conversion function so no arguments
+\item [{msgLen}] The size of the buffer into which the command string is
+placed. I allowed a little extra space in case a longer command is
+used some day. 
+\item [{convert}] No special conversion function is needed. 
+\item [{P1,P2,P3}] There's no special conversion function so no arguments
 are needed. 
-\item [pdevGpibNames]There's no name table. 
-\item [eos]The end-of-string value used to mark the end of the readback
+\item [{pdevGpibNames}] There's no name table. 
+\item [{eos}] The end-of-string value used to mark the end of the readback
 operation. GPIB devices can usually leave this entry NULL since they
 use the End-Or-Identify (EOI) line to delimit messages.Serial devices
 which have the same end-of-string value for all commands couldalso
@@ -275,58 +257,55 @@ asynOctetSetInputEos command.
 \end{description}
 
 \paragraph{Command array index 1 -- Go to new filter position}
-
 \begin{lyxcode}
-\{\&DSET\_LO,~GPIBWRITE,~IB\_Q\_LOW,~NULL,~\char`\"{}\textbackslash{}017\%c\char`\"{},~10,~10,~\\
-~~~~~~~~NULL,~0,~0,~NULL,~NULL,~\char`\"{}\textbackslash{}030\char`\"{}\},
-\end{lyxcode}
+\{\&DSET\_LO,~GPIBWRITE,~IB\_Q\_LOW,~NULL,~\textquotedbl{}\textbackslash{}017\%c\textquotedbl{},~10,~10,~\\
+~~~~~~~~NULL,~0,~0,~NULL,~NULL,~\textquotedbl{}\textbackslash{}030\textquotedbl{}\},\end{lyxcode}
 \begin{description}
-\item [dset]This command is associated with an longout record. 
-\item [type]A WRITE operation is to be performed. 
-\item [pri]This operation will be placed on the low-priority queue of I/O
-requests. 
-\item [cmd]Because this is a GPIBWRITE operation this element is unused. 
-\item [format]The format string to generate the command to be sent to the
-device. The filter position (1-6) can be converted to the required
+\item [{dset}] This command is associated with an longout record. 
+\item [{type}] A WRITE operation is to be performed. 
+\item [{pri}] This operation will be placed on the low-priority queue of
+I/O requests. 
+\item [{cmd}] Because this is a GPIBWRITE operation this element is unused. 
+\item [{format}] The format string to generate the command to be sent to
+the device. The filter position (1-6) can be converted to the required
 command byte with the printf \texttt{\%c} format. 
-\item [rspLen]The size of the readback buffer. Although only two readback
+\item [{rspLen}] The size of the readback buffer. Although only two readback
 bytes are expected I allow for a few extra bytes just in case. 
-\item [msgLen]The size of the buffer into which the command string is placed.
-I allowed a little extra space in case a longer command is used some
-day. 
-\item [convert]No special conversion function is needed. 
-\item [P1,P2,P3]There's no special conversion function so no arguments
+\item [{msgLen}] The size of the buffer into which the command string is
+placed. I allowed a little extra space in case a longer command is
+used some day. 
+\item [{convert}] No special conversion function is needed. 
+\item [{P1,P2,P3}] There's no special conversion function so no arguments
 are needed. 
-\item [pdevGpibNames]There's no name table. 
-\item [eos]The end-of-string value used to mark the end of the readback
+\item [{pdevGpibNames}] There's no name table. 
+\item [{eos}] The end-of-string value used to mark the end of the readback
 operation. 
 \end{description}
 
 \paragraph{Command array index 2 -- Query filter position}
-
 \begin{lyxcode}
-\{\&DSET\_LI,~GPIBREAD,~IB\_Q\_LOW,~\char`\"{}\textbackslash{}035\char`\"{},~NULL,~0,~10,~\\
-~~~~~~~~convertPositionReply,~0,~0,~NULL,~NULL,~\char`\"{}\textbackslash{}030\char`\"{}\},
-\end{lyxcode}
+\{\&DSET\_LI,~GPIBREAD,~IB\_Q\_LOW,~\textquotedbl{}\textbackslash{}035\textquotedbl{},~NULL,~0,~10,~\\
+~~~~~~~~convertPositionReply,~0,~0,~NULL,~NULL,~\textquotedbl{}\textbackslash{}030\textquotedbl{}\},\end{lyxcode}
 \begin{description}
-\item [dset]This command is associated with an longin record. 
-\item [type]A READ operation is to be performed. 
-\item [pri]This operation will be placed on the low-priority queue of I/O
-requests. 
-\item [cmd]The command string to be sent to the device. The AB300 responds
+\item [{dset}] This command is associated with an longin record. 
+\item [{type}] A READ operation is to be performed. 
+\item [{pri}] This operation will be placed on the low-priority queue of
+I/O requests. 
+\item [{cmd}] The command string to be sent to the device. The AB300 responds
 to this command by sending back three bytes: the current position,
 the controller status, and a terminating \texttt{'\textbackslash{}030'}. 
-\item [format]Because this operation has its own conversion function this
-element is unused. 
-\item [rspLen]There is no command echo to be read. 
-\item [msgLen]The size of the buffer into which the reply string is placed.
-Although only three reply bytes are expected I allow for a few extra
-bytes just in case.
-\item [convert]There's no sscanf format that can convert the reply from
+\item [{format}] Because this operation has its own conversion function
+this element is unused. 
+\item [{rspLen}] There is no command echo to be read. 
+\item [{msgLen}] The size of the buffer into which the reply string is
+placed. Although only three reply bytes are expected I allow for a
+few extra bytes just in case.
+\item [{convert}] There's no sscanf format that can convert the reply from
 the AB300 so a special conversion function must be provided. 
-\item [P1,P2,P3]The special conversion function requires no arguments. 
-\item [pdevGpibNames]There's no name table. 
-\item [eos]The end-of-string value used to mark the end of the read operation. 
+\item [{P1,P2,P3}] The special conversion function requires no arguments. 
+\item [{pdevGpibNames}] There's no name table. 
+\item [{eos}] The end-of-string value used to mark the end of the read
+operation. 
 \end{description}
 
 \paragraph{Command array index 3 -- Query controller status}
@@ -334,10 +313,9 @@ the AB300 so a special conversion function must be provided.
 This command array entry is almost identical to the previous entry.
 The only change is that a different custom conversion function is
 used. 
-
 \begin{lyxcode}
-\{\&DSET\_LI,~GPIBREAD,~IB\_Q\_LOW,~\char`\"{}\textbackslash{}035\char`\"{},~NULL,~0,~10,~\\
-~~~~~~~~convertStatusReply,~0,~0,~NULL,~NULL,~\char`\"{}\textbackslash{}030\char`\"{}\},
+\{\&DSET\_LI,~GPIBREAD,~IB\_Q\_LOW,~\textquotedbl{}\textbackslash{}035\textquotedbl{},~NULL,~0,~10,~\\
+~~~~~~~~convertStatusReply,~0,~0,~NULL,~NULL,~\textquotedbl{}\textbackslash{}030\textquotedbl{}\},
 \end{lyxcode}
 
 \subsubsection{Write the special conversion functions}
@@ -351,7 +329,6 @@ structure contains a pointer to the EPICS record. The custom conversion
 function uses this pointer to set the record's value field.
 
 Here are the custom conversion functions I wrote for the AB300.
-
 \begin{lyxcode}
 /{*}~\\
 ~{*}~Custom~conversion~routines~\\
@@ -364,7 +341,7 @@ convertPositionReply(struct~gpibDpvt~{*}pdpvt,~int~P1,~int~P2,~char~{*}{*}P3)~\\
 ~~~~if~(pdpvt->msgInputLen~!=~3)~\{~\\
 ~~~~~~~~epicsSnprintf(pdpvt->pasynUser->errorMessage,~\\
 ~~~~~~~~~~~~~~~~~~~~~~pdpvt->pasynUser->errorMessageSize,~\\
-~~~~~~~~~~~~~~~~~~~~~~\char`\"{}Invalid~reply\char`\"{});~\\
+~~~~~~~~~~~~~~~~~~~~~~\textquotedbl{}Invalid~reply\textquotedbl{});~\\
 ~~~~~~~~return~-1;~\\
 ~~~~\}~\\
 ~~~~pli->val~=~pdpvt->msg{[}0{]};~\\
@@ -378,7 +355,7 @@ convertStatusReply(struct~gpibDpvt~{*}pdpvt,~int~P1,~int~P2,~char~{*}{*}P3)~\\
 ~~~~if~(pdpvt->msgInputLen~!=~3)~\{~\\
 ~~~~~~~~epicsSnprintf(pdpvt->pasynUser->errorMessage,~\\
 ~~~~~~~~~~~~~~~~~~~~~~pdpvt->pasynUser->errorMessageSize,~\\
-~~~~~~~~~~~~~~~~~~~~~~\char`\"{}Invalid~reply\char`\"{});~\\
+~~~~~~~~~~~~~~~~~~~~~~\textquotedbl{}Invalid~reply\textquotedbl{});~\\
 ~~~~~~~~return~-1;~\\
 ~~~~\}~\\
 ~~~~pli->val~=~pdpvt->msg{[}1{]};~\\
@@ -386,7 +363,6 @@ convertStatusReply(struct~gpibDpvt~{*}pdpvt,~int~P1,~int~P2,~char~{*}{*}P3)~\\
 \}
 \end{lyxcode}
 Some points of interest: 
-
 \begin{enumerate}
 \item Custom conversion functions indicate an error by returning -1.
 \item If an error status is returned an explanation should be left in the
@@ -406,12 +382,11 @@ Here's the initialization for the AB300 device support. The AB300
 immediately echos the command characters sent to it so the respond2Writes
 value must be set to 0. All the other values are left as created by
 the makeSupport.pl script:
-
 \begin{lyxcode}
 static~long~init\_ai(int~pass)~\\
 \{~\\
 ~~~~if(pass==0)~\{~\\
-~~~~~~~~devSupParms.name~=~\char`\"{}devAB300\char`\"{};~\\
+~~~~~~~~devSupParms.name~=~\textquotedbl{}devAB300\textquotedbl{};~\\
 ~~~~~~~~devSupParms.gpibCmds~=~gpibCmds;~\\
 ~~~~~~~~devSupParms.numparams~=~NUMPARAMS;~\\
 ~~~~~~~~devSupParms.timeout~=~TIMEOUT;~\\
@@ -431,7 +406,8 @@ device support file and the DTYP fields in the application database.
 The makeSupport.pl command created an example file in \texttt{AB300Sup/devAB300.dbd}.
 If you removed any of the \texttt{DSET\_}\textit{xxx} definitions
 from the device support file you must remove the corresponding lines
-from this file.
+from this file. You must define an analog-in DSET even if the device
+provides no analog-in records (as is the case for the AB300).
 
 \verbatiminput{AB300/AB300Sup/devAB300.dbd}
 
@@ -447,7 +423,6 @@ contents:
 \verbatiminput{AB300/AB300Sup/devAB300.db}
 
 Notes: 
-
 \begin{enumerate}
 \item The numbers following the \texttt{L} in the INP and OUT fields are
 the number of the `link' used to communicate with the filter wheel.
@@ -470,7 +445,6 @@ prefixes, link number and GPIB address, respectively.
 
 Change directories to the top-level directory of your device support
 and:
-
 \begin{lyxcode}
 norume>~\textrm{\textbf{make}}
 \end{lyxcode}
@@ -496,7 +470,6 @@ etc.). I built the test application in the same <top> as the device
 support, but the application could be built anywhere. As well, I built
 the application as a 'soft' IOC running on the host machine, but the
 serial/GPIB driver also works on RTEMS and vxWorks.
-
 \begin{lyxcode}
 norume>~\textrm{\textbf{cd~ab300}}~\\
 norume>~\textrm{\textbf{/home/EPICS/base/bin/linux-x86/makeBaseApp.pl~-t~ioc~AB300}}~\\
@@ -521,7 +494,6 @@ the test, or any other, application.
 Edit the \texttt{configure/RELEASE} file which makeBaseApp.pl created
 and confirm that the EPICS\_BASE path is correct. Add entries for
 your ASYN and device support. For example these might be:
-
 \begin{lyxcode}
 AB300=/home/EPICS/modules/instrument/ab300/1-2
 
@@ -535,7 +507,6 @@ EPICS\_BASE=/home/EPICS/base
 Your application database definition file must include the database
 definition files for your instrument and for the ASYN drivers. There
 are two ways that this can be done:
-
 \begin{enumerate}
 \item If you are building your application database definition from an \textit{xxx}\texttt{Include.dbd}
 file you include the additional database definitions in that file.
@@ -552,21 +523,20 @@ there:\\
 \textit{xxx}\_DBD += drvAsynIPPort.dbd\\
 \textit{xxx}\_DBD += drvAsynSerialPort.dbd\\
 .\\
-.
+.\\
+This is the preferred method.
 \end{enumerate}
 
 \subsection{Add the device support libraries to the application}
 
 You must link your device support library and the ASYN support library
 with the application. Add the following lines 
-
 \begin{lyxcode}
 \textrm{\textit{xxx}}\_LIBS~+=~devAB300
 
 \textrm{\textit{xxx}}\_LIBS~+=~asyn
 \end{lyxcode}
 before the
-
 \begin{lyxcode}
 \textrm{\textit{xxx}}\_LIBS~+=~\$(EPICS\_BASE\_IOC\_LIBS)
 \end{lyxcode}
@@ -577,14 +547,13 @@ line in the application \texttt{Makefile}.
 
 The \texttt{st.cmd} application startup script created by the makeBaseApp.pl
 script needs a few changes to get the application working properly.
-
 \begin{enumerate}
 \item Load the device support database records:
 
 \begin{lyxcode}
 cd~\$(AB300)~~~~~~~~~~\textrm{(}cd~AB300~\textrm{if~using~the~vxWorks~shell)}
 
-dbLoadRecords(\char`\"{}db/devAB300.db\char`\"{},\char`\"{}P=AB300:,R=,L=0,A=0\char`\"{})
+dbLoadRecords(\textquotedbl{}db/devAB300.db\textquotedbl{},\textquotedbl{}P=AB300:,R=,L=0,A=0\textquotedbl{})
 \end{lyxcode}
 \item Set up the 'port' between the IOC and the filter wheel. 
 
@@ -594,19 +563,19 @@ over a telnet-style socket connection you need to specify the Internet
 host and port number like:
 
 \begin{lyxcode}
-drvAsynIPPortConfigure(\char`\"{}L0\char`\"{},\char`\"{}164.54.9.91:4002\char`\"{},0,0,0)
+drvAsynIPPortConfigure(\textquotedbl{}L0\textquotedbl{},\textquotedbl{}164.54.9.91:4002\textquotedbl{},0,0,0)
 \end{lyxcode}
 \item If you're using a serial line directly attached to the IOC you need
 something like:
 
 \begin{lyxcode}
-drvAsynSerialPortConfigure(\char`\"{}L0\char`\"{},\char`\"{}/dev/ttyS0\char`\"{},0,0,0)~\\
-asynSetOption(\char`\"{}L0\char`\"{},~-1,~\char`\"{}baud\char`\"{},~\char`\"{}9600\char`\"{})~\\
-asynSetOption(\char`\"{}L0\char`\"{},~-1,~\char`\"{}bits\char`\"{},~\char`\"{}8\char`\"{})~\\
-asynSetOption(\char`\"{}L0\char`\"{},~-1,~\char`\"{}parity\char`\"{},~\char`\"{}none\char`\"{})~\\
-asynSetOption(\char`\"{}L0\char`\"{},~-1,~\char`\"{}stop\char`\"{},~\char`\"{}1\char`\"{})~\\
-asynSetOption(\char`\"{}L0\char`\"{},~-1,~\char`\"{}clocal\char`\"{},~\char`\"{}Y\char`\"{})~\\
-asynSetOption(\char`\"{}L0\char`\"{},~-1,~\char`\"{}crtscts\char`\"{},~\char`\"{}N\char`\"{})
+drvAsynSerialPortConfigure(\textquotedbl{}L0\textquotedbl{},\textquotedbl{}/dev/ttyS0\textquotedbl{},0,0,0)~\\
+asynSetOption(\textquotedbl{}L0\textquotedbl{},~-1,~\textquotedbl{}baud\textquotedbl{},~\textquotedbl{}9600\textquotedbl{})~\\
+asynSetOption(\textquotedbl{}L0\textquotedbl{},~-1,~\textquotedbl{}bits\textquotedbl{},~\textquotedbl{}8\textquotedbl{})~\\
+asynSetOption(\textquotedbl{}L0\textquotedbl{},~-1,~\textquotedbl{}parity\textquotedbl{},~\textquotedbl{}none\textquotedbl{})~\\
+asynSetOption(\textquotedbl{}L0\textquotedbl{},~-1,~\textquotedbl{}stop\textquotedbl{},~\textquotedbl{}1\textquotedbl{})~\\
+asynSetOption(\textquotedbl{}L0\textquotedbl{},~-1,~\textquotedbl{}clocal\textquotedbl{},~\textquotedbl{}Y\textquotedbl{})~\\
+asynSetOption(\textquotedbl{}L0\textquotedbl{},~-1,~\textquotedbl{}crtscts\textquotedbl{},~\textquotedbl{}N\textquotedbl{})
 \end{lyxcode}
 \item If you're using a serial line directly attached to a vxWorks IOC you
 must first configure the serial port interface hardware. The following
@@ -614,12 +583,12 @@ example shows the commands to configure a port on a GreenSprings UART
 Industry-Pack module.
 
 \begin{lyxcode}
-ipacAddVIPC616\_01(\char`\"{}0x6000,B0000000\char`\"{})~\\
+ipacAddVIPC616\_01(\textquotedbl{}0x6000,B0000000\textquotedbl{})~\\
 tyGSOctalDrv(1)~\\
-tyGSOctalModuleInit(\char`\"{}RS232\char`\"{},~0x80,~0,~0)~\\
-tyGSOctalDevCreate(\char`\"{}/tyGS/0/0\char`\"{},0,0,1000,1000)~\\
-drvAsynSerialPortConfigure(\char`\"{}L0\char`\"{},\char`\"{}/tyGS/0/0\char`\"{},0,0,0)~\\
-asynSetOption(\char`\"{}L0\char`\"{},-1,\char`\"{}baud\char`\"{},\char`\"{}9600\char`\"{})
+tyGSOctalModuleInit(\textquotedbl{}RS232\textquotedbl{},~0x80,~0,~0)~\\
+tyGSOctalDevCreate(\textquotedbl{}/tyGS/0/0\textquotedbl{},0,0,1000,1000)~\\
+drvAsynSerialPortConfigure(\textquotedbl{}L0\textquotedbl{},\textquotedbl{}/tyGS/0/0\textquotedbl{},0,0,0)~\\
+asynSetOption(\textquotedbl{}L0\textquotedbl{},-1,\textquotedbl{}baud\textquotedbl{},\textquotedbl{}9600\textquotedbl{})
 \end{lyxcode}
 \end{itemize}
 In all of the above examples the first argument of the configure and
@@ -639,11 +608,11 @@ driver. The following enables error messages and a description of
 every I/O operation.
 
 \begin{lyxcode}
-asynSetTraceMask(\char`\"{}L0\char`\"{},-1,0x9)~\\
-asynSetTraceIOMask(\char`\"{}L0\char`\"{},-1,0x2)
+asynSetTraceMask(\textquotedbl{}L0\textquotedbl{},-1,0x9)~\\
+asynSetTraceIOMask(\textquotedbl{}L0\textquotedbl{},-1,0x2)
 \end{lyxcode}
 A better way to control the amount and type of diagnostic output is
-to add an \ahref{\url{../asynRecord.html}}{asynRecord} to your application.
+to add an asynRecord \url{../asynRecord.html} to your application.
 
 \end{enumerate}
 
@@ -651,7 +620,6 @@ to add an \ahref{\url{../asynRecord.html}}{asynRecord} to your application.
 
 Change directories to the top-level directory of your application
 and:
-
 \begin{lyxcode}
 norume>~\textrm{\textbf{make}}
 \end{lyxcode}
@@ -664,28 +632,26 @@ If all goes well you'll be left with an executable program in bin/linux-x86/AB30
 
 Change directories to where makeBaseApp.pl put the application startup
 script and run the application:
-
 \begin{lyxcode}
 norume>~\textrm{\textbf{cd~iocBoot/iocAB300}}~\\
 norume>~\textrm{\textbf{../../bin/linux-x86/AB300~st.cmd}}~\\
-dbLoadDatabase(\char`\"{}../../dbd/AB300.dbd\char`\"{},0,0)~\\
+dbLoadDatabase(\textquotedbl{}../../dbd/AB300.dbd\textquotedbl{},0,0)~\\
 AB300\_registerRecordDeviceDriver(pdbbase)~\\
 cd~\$\{AB300\}
 
-dbLoadRecords(\char`\"{}db/devAB300.db\char`\"{},\char`\"{}P=AB300:,R=,L=0,A=0\char`\"{})~\\
-drvAsynIPPortConfigure(\char`\"{}L0\char`\"{},\char`\"{}164.54.3.137:4001\char`\"{},0,0,0)~\\
-asynSetTraceMask(\char`\"{}L0\char`\"{},-1,0x9)~\\
-asynSetTraceIOMask(\char`\"{}L0\char`\"{},-1,0x2)~\\
+dbLoadRecords(\textquotedbl{}db/devAB300.db\textquotedbl{},\textquotedbl{}P=AB300:,R=,L=0,A=0\textquotedbl{})~\\
+drvAsynIPPortConfigure(\textquotedbl{}L0\textquotedbl{},\textquotedbl{}164.54.3.137:4001\textquotedbl{},0,0,0)~\\
+asynSetTraceMask(\textquotedbl{}L0\textquotedbl{},-1,0x9)~\\
+asynSetTraceIOMask(\textquotedbl{}L0\textquotedbl{},-1,0x2)~\\
 iocInit()~\\
 \#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#~\\
 \#\#\#~~EPICS~IOC~CORE~built~on~Apr~23~2004~\\
-\#\#\#~~EPICS~R3.14.6~\$\$Name:~~\$\$~\$\$Date:~2004/11/19~19:00:09~\$\$~\\
+\#\#\#~~EPICS~R3.14.6~~2008/03/25~18:06:21~\\
 \#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#~\\
 Starting~iocInit~\\
 iocInit:~All~initialization~complete
 \end{lyxcode}
 Check the process variable names:
-
 \begin{lyxcode}
 epics>~\textrm{\textbf{dbl}}~\\
 AB300:FilterWheel:fbk~\\
@@ -695,7 +661,6 @@ AB300:FilterWheel:reset
 \end{lyxcode}
 Reset the filter wheel. The values sent between the IOC and the filter
 wheel are shown:
-
 \begin{lyxcode}
 epics>~\textrm{\textbf{dbpf~AB300:FilterWheel:reset~0}}~\\
 DBR\_LONG:~~~~~~~~~~~0~~~~~~~~~0x0~\\
@@ -704,7 +669,6 @@ DBR\_LONG:~~~~~~~~~~~0~~~~~~~~~0x0~\\
 \end{lyxcode}
 Read back the filter wheel position. The dbtr command prints the record
 before the I/O has a chance to occur:
-
 \begin{lyxcode}
 epics>~\textrm{\textbf{dbtr~AB300:FilterWheel:fbk}}~\\
 ACKS:~NO\_ALARM~~~~~~ACKT:~YES~~~~~~~~~~~ADEL:~0~~~~~~~~~~~~~ALST:~0~\\
@@ -726,7 +690,6 @@ UDF:~1~~~~~~~~~~~~~~VAL:~0~\\
 2004/04/21~12:08:01.994~164.54.3.137:4001~read~3~\textbackslash{}001\textbackslash{}020\textbackslash{}030
 \end{lyxcode}
 Now the process variable should have that value:
-
 \begin{lyxcode}
 epics>~\textrm{\textbf{dbpr~AB300:FilterWheel:fbk}}~\\
 ASG:~~~~~~~~~~~~~~~~DESC:~Filter~Wheel~Position~~~~~~~~~~~~~DISA:~0~\\
@@ -735,7 +698,6 @@ SEVR:~NO\_ALARM~~~~~~STAT:~NO\_ALARM~~~~~~SVAL:~0~~~~~~~~~~~~~TPRO:~0~\\
 VAL:~1
 \end{lyxcode}
 Move the wheel to position 4:
-
 \begin{lyxcode}
 epics>~\textrm{\textbf{dbpf~AB300:FilterWheel~4}}~\\
 DBR\_LONG:~~~~~~~~~~~4~~~~~~~~~0x4~~\\
@@ -744,7 +706,6 @@ DBR\_LONG:~~~~~~~~~~~4~~~~~~~~~0x4~~\\
 2004/04/21~12:10:52.902~164.54.3.137:4001~read~1~\textbackslash{}030
 \end{lyxcode}
 Read back the position:
-
 \begin{lyxcode}
 epics>~\textrm{\textbf{dbtr~AB300:FilterWheel:fbk}}~\\
 ACKS:~NO\_ALARM~~~~~~ACKT:~YES~~~~~~~~~~~ADEL:~0~~~~~~~~~~~~~ALST:~1~\\
@@ -766,7 +727,6 @@ UDF:~0~~~~~~~~~~~~~~VAL:~1~\\
 2004/04/21~12:11:43.391~164.54.3.137:4001~read~3~\textbackslash{}004\textbackslash{}020\textbackslash{}030
 \end{lyxcode}
 And it really is 4:
-
 \begin{lyxcode}
 epics>~\textrm{\textbf{dbpr~AB300:FilterWheel:fbk}}~\\
 ASG:~~~~~~~~~~~~~~~~DESC:~Filter~Wheel~Position~~~~~~~~~~~~~DISA:~0~\\
@@ -788,7 +748,6 @@ Here is the complete device support file for the AB300 filter wheel
 The asynRecord provides a convenient mechanism for controlling the
 diagnostic messages produced by asyn drivers. To use an asynRecord
 in your application: 
-
 \begin{enumerate}
 \item Add the line\\
 \\
@@ -798,7 +757,7 @@ to an application \texttt{Makefile}.
 \item Create the diagnostic record by adding a line like\\
 \\
 cd \$(ASYN)          (cd ASYN if using the vxWorks shell)\texttt{\small }~\\
-\texttt{\small dbLoadRecords(\char`\"{}db/asynRecord.db\char`\"{},\char`\"{}P=AB300,R=Test,PORT=L0,ADDR=0,IMAX=0,OMAX=0\char`\"{})}\\
+\texttt{\small dbLoadRecords(\textquotedbl{}db/asynRecord.db\textquotedbl{},\textquotedbl{}P=AB300,R=Test,PORT=L0,ADDR=0,IMAX=0,OMAX=0\textquotedbl{})}\\
 \\
 to the application startup (\texttt{st.cmd}) script. The \texttt{PORT}
 value must match the the value in the corresponding \texttt{drvAsynIPPortConfigure}
@@ -812,9 +771,8 @@ To run the asynRecord screen, add \textit{<asynTop}\texttt{>/medm}
 to your \texttt{EPICS\_DISPLAY\_PATH} environment variable and start
 medm with \texttt{P}, \texttt{R}, \texttt{PORT} and \texttt{ADDR}
 values matching those given in the \texttt{dbLoadRecords} command:
-
 \begin{lyxcode}
-medm~-x~-macro~\char`\"{}P=AB300,R=Test,PORT=L0,ADDR=0\char`\"{}~asynRecord.adl
+medm~-x~-macro~\textquotedbl{}P=AB300,R=Test\textquotedbl{}~asynRecord.adl
 \end{lyxcode}
 
 \section{Support for devices with common 'end-of-string' characters}
@@ -830,25 +788,23 @@ does not require command/response terminators).
 
 For example, the configuration commands for a TDS3000 digital oscilloscope
 connected through an Ethernet serial port adapter might look like:
-
 \begin{lyxcode}
-drvAsynIPPortConfigure(\char`\"{}L0\char`\"{},~\char`\"{}192.168.9.90:4003\char`\"{},~0,~0,~0)~\\
-asynOctetSetInputEos(\char`\"{}L0\char`\"{},0,\char`\"{}\textbackslash{}n\char`\"{})~\\
-asynOctetSetOutputEos(\char`\"{}L0\char`\"{},0,\char`\"{}\textbackslash{}n\char`\"{})
+drvAsynIPPortConfigure(\textquotedbl{}L0\textquotedbl{},~\textquotedbl{}192.168.9.90:4003\textquotedbl{},~0,~0,~0)~\\
+asynOctetSetInputEos(\textquotedbl{}L0\textquotedbl{},0,\textquotedbl{}\textbackslash{}n\textquotedbl{})~\\
+asynOctetSetOutputEos(\textquotedbl{}L0\textquotedbl{},0,\textquotedbl{}\textbackslash{}n\textquotedbl{})
 \end{lyxcode}
 The configuration command for the same oscilloscope connected to an
 Ethernet GPIB adapter would be:
-
 \begin{lyxcode}
-vxi11Configure(\char`\"{}L0\char`\"{},~\char`\"{}192.168.8.129\char`\"{},~0,~0.0,~\char`\"{}gpib0\char`\"{},~0)
+vxi11Configure(\textquotedbl{}L0\textquotedbl{},~\textquotedbl{}192.168.8.129\textquotedbl{},~0,~0.0,~\textquotedbl{}gpib0\textquotedbl{},~0)
 \end{lyxcode}
 An example command table entry for this device is shown below. Notice
 that there is no \texttt{\textbackslash{}n} at the end of the command
 and that the table 'eos' field is \texttt{NULL}:
-
 \begin{lyxcode}
 /{*}~2~:~read~delay~:~AI~{*}/~\\
-~~\{\&DSET\_AI,~GPIBREAD,~IB\_Q\_LOW,~\char`\"{}HOR:DEL:TIM?\char`\"{},~\char`\"{}\%lf\char`\"{},~0,~20,~\\
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~NULL,~0,~0,~NULL,~NULL,~NULL\},\end{lyxcode}
+~~\{\&DSET\_AI,~GPIBREAD,~IB\_Q\_LOW,~\textquotedbl{}HOR:DEL:TIM?\textquotedbl{},~\textquotedbl{}\%lf\textquotedbl{},~0,~20,~\\
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~NULL,~0,~0,~NULL,~NULL,~NULL\},
+\end{lyxcode}
 
 \end{document}
