@@ -288,7 +288,6 @@ static long init_record(asynRecord * pasynRec, int pass)
     /* Initialize asyn, connect to device */
     pasynUser = pasynManager->createAsynUser(
                      asynCallbackProcess, queueTimeoutCallbackProcess);
-    pasynUser->timeout = 1;
     pasynUser->userPvt = pasynRecPvt;
     pasynRecPvt->pasynUser = pasynUser;
     pasynRecPvt->state = stateNoDevice;
@@ -1477,16 +1476,18 @@ static void performOctetIO(asynUser * pasynUser)
             status = pasynRecPvt->pasynOctet->getOutputEos(
                                     pasynRecPvt->asynOctetPvt,pasynUser,
                                     saveEosBuf,sizeof saveEosBuf,&saveEosLen);
-            /* getOutputEos can return an error if the driver does not implement it */
-            if (status != asynSuccess) saveEosLen = 0;
+            if (status != asynSuccess) {
+                reportError(pasynRec, status, "EOS TOO LONG");
+                return;
+            }
             if (saveEosLen)
                 pasynRecPvt->pasynOctet->setOutputEos(pasynRecPvt->asynOctetPvt,
-                                                      pasynUser,NULL,0);
+                                                             pasynUser,NULL,0);
             status = pasynRecPvt->pasynOctet->write(pasynRecPvt->asynOctetPvt,
-                                pasynUser, outptr, nwrite, &nbytesTransfered);
+                                 pasynUser, outptr, nwrite, &nbytesTransfered);
             if (saveEosLen)
                 pasynRecPvt->pasynOctet->setOutputEos(pasynRecPvt->asynOctetPvt,
-                                                      pasynUser,saveEosBuf,saveEosLen);
+                                             pasynUser,saveEosBuf,saveEosLen);
         } else {
             /* ASCII or Hybrid mode */
             status = pasynRecPvt->pasynOctet->write(pasynRecPvt->asynOctetPvt,
@@ -1513,16 +1514,16 @@ static void performOctetIO(asynUser * pasynUser)
             status = pasynRecPvt->pasynOctet->getInputEos(
                                     pasynRecPvt->asynOctetPvt,pasynUser,
                                     saveEosBuf,sizeof saveEosBuf,&saveEosLen);
-            /* getInputEos can return an error if the driver does not implement it */
-            if (status != asynSuccess) saveEosLen = 0;
-            if (saveEosLen) 
-                pasynRecPvt->pasynOctet->setInputEos(pasynRecPvt->asynOctetPvt,
-                                                     pasynUser,NULL,0);
+            if (status != asynSuccess) {
+                reportError(pasynRec, status, "EOS TOO LONG");
+                return;
+            }
+            pasynRecPvt->pasynOctet->setInputEos(pasynRecPvt->asynOctetPvt,
+                                                             pasynUser,NULL,0);
             status = pasynRecPvt->pasynOctet->read(pasynRecPvt->asynOctetPvt,
                   pasynUser, inptr, nread, &nbytesTransfered,&eomReason);
-            if (saveEosLen) 
-                pasynRecPvt->pasynOctet->setInputEos(pasynRecPvt->asynOctetPvt,
-                                                     pasynUser,saveEosBuf,saveEosLen);
+            pasynRecPvt->pasynOctet->setInputEos(pasynRecPvt->asynOctetPvt,
+                                             pasynUser,saveEosBuf,saveEosLen);
         } else {
             /* ASCII or Hybrid mode */
             status = pasynRecPvt->pasynOctet->read(pasynRecPvt->asynOctetPvt,

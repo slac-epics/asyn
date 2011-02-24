@@ -423,30 +423,10 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,
     epicsMutexLock(pPvt->mutexId);
     count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
     if (count != size) {
-        /* There was no room in the ring buffer.  In the past we just threw away
-         * the new value.  However, it is better to remove the oldest value from the
-         * ring buffer and add the new one.  That way the final value the record receives
-         * is guaranteed to be the most recent value */
-        epicsInt32 dummy;
-        count = epicsRingBytesGet(pPvt->ringBuffer, (char *)&dummy, size);
-        if (count != size) {
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynInt32 interruptCallbackInput error, ring read failed\n",
-                pPvt->pr->name);
-        }
-        count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
-        if (count != size) {
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynInt32 interruptCallbackInput error, ring put failed\n",
-                pPvt->pr->name);
-        }
         pPvt->ringBufferOverflows++;
-    } else {
-        /* We only need to request the record to process if we added a 
-         * new element to the ring buffer, not if we just replaced an element. */
-        scanIoRequest(pPvt->ioScanPvt);
-    }    
+    }
     epicsMutexUnlock(pPvt->mutexId);
+    scanIoRequest(pPvt->ioScanPvt);
 }
 
 static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,
@@ -582,12 +562,7 @@ static long processAiAverage(aiRecord *pr)
     double rval;
 
     epicsMutexLock(pPvt->mutexId);
-    if (pPvt->numAverage == 0) {
-        recGblSetSevr(pr, UDF_ALARM, INVALID_ALARM);
-        pr->udf = 1;
-        epicsMutexUnlock(pPvt->mutexId);
-        return -2;
-    }
+    if (pPvt->numAverage == 0) pPvt->numAverage = 1;
     rval = pPvt->sum/pPvt->numAverage;
     /*round result*/
     rval += (pPvt->sum>0.0) ? 0.5 : -0.5;
@@ -637,7 +612,6 @@ static long processAo(aoRecord *pr)
     
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
-        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         pr->rval = pPvt->value;
         pr->udf = 0;
         value = (double)pr->rval + (double)pr->roff;
@@ -661,7 +635,7 @@ static long processAo(aoRecord *pr)
         pr->val = value;
         pr->udf = isnan(value);
     } else if(pr->pact == 0) {
-        pPvt->value = pr->rval;
+        pPvt->gotValue = 1; pPvt->value = pr->rval;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
@@ -740,10 +714,9 @@ static long processLo(longoutRecord *pr)
 
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
-        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         pr->val = pPvt->value; pr->udf = 0;
     } else if(pr->pact == 0) {
-        pPvt->value = pr->val;
+        pPvt->gotValue = 1; pPvt->value = pr->val;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
@@ -824,12 +797,11 @@ static long processBo(boRecord *pr)
 
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
-        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         pr->rval = pPvt->value;
         pr->val = (pr->rval) ? 1 : 0;
         pr->udf = 0;
     } else if(pr->pact == 0) {
-        pPvt->value = pr->rval;
+        pPvt->gotValue = 1; pPvt->value = pr->rval;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
@@ -912,7 +884,6 @@ static long processMbbo(mbboRecord *pr)
 
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
-        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         unsigned long rval = pPvt->value & pr->mask;
 
         pr->rval = rval;
@@ -936,7 +907,7 @@ static long processMbbo(mbboRecord *pr)
         }
         pr->udf = FALSE;
     } else if(pr->pact == 0) {
-        pPvt->value = pr->rval;
+        pPvt->gotValue = 1; pPvt->value = pr->rval;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;

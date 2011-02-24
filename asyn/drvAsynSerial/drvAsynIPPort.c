@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * drvAsynIPPort.c,v 1.56 2009/08/13 19:11:44 rivers Exp
+ * $Id: drvAsynIPPort.c,v 1.53 2008/07/02 21:02:06 norume Exp $
  */
 
 /* Previous versions of drvAsynIPPort.c (1.29 and earlier, asyn R4-5 and earlier)
@@ -20,8 +20,8 @@
  * 2) Periodically check (every 5 seconds) during a long I/O operation to see if
  *    the operation should be cancelled.
  *
- * Item 1) above was not really implemented because there is no portable robust way
- * to abort an I/O operation.  So the timer set a flag which was checked after
+ * Item 1) above was not really implemented because there is no portable robust was
+ * to abort a pend I/O operation.  So the timer set a flag which was checked after
  * the poll() was complete to see if the timeout had occured.  This was not robust,
  * because there were competing timers (timeout timer and poll) which could fire in
  * the wrong order.
@@ -55,22 +55,14 @@
 #include <epicsExport.h>
 #include "asynDriver.h"
 #include "asynOctet.h"
-#include "asynInterposeCom.h"
-#include "asynInterposeEos.h"
 #include "drvAsynIPPort.h"
 
 #if defined(__rtems__)
 # define USE_SOCKTIMEOUT
 #else
 # define USE_POLL
-# if defined(vxWorks)
+# if defined(vxWorks) || defined(_WIN32)
 #  define FAKE_POLL
-# elif defined(_WIN32)
-#  if defined(POLLIN)
-#   define poll(fd,nfd,t) WSAPoll(fd,nfd,t)
-#  else
-#   define FAKE_POLL
-#  endif
 # else
 #  include <sys/poll.h>
 # endif
@@ -92,7 +84,7 @@ typedef struct {
     char              *IPDeviceName;
     char              *portName;
     int                socketType;
-    int                flags;
+    int                broadcastFlag;
     int                fd;
     unsigned long      nRead;
     unsigned long      nWritten;
@@ -100,9 +92,6 @@ typedef struct {
     asynInterface      common;
     asynInterface      octet;
 } ttyController_t;
-
-#define FLAG_BROADCAST                  0x1
-#define FLAG_CONNECT_PER_TRANSACTION    0x2
 
 #ifdef FAKE_POLL
 /*
@@ -146,7 +135,7 @@ static int setNonBlock(int fd, int nonBlockFlag)
 #if defined(vxWorks)
     int flags;
     flags = nonBlockFlag;
-    if (ioctl(fd, FIONBIO, (int)&flags) < 0)
+    if (ioctl(fd, FIONBIO, &flags) < 0)
         return -1;
 #elif defined(_WIN32)
     unsigned long int flags;
@@ -179,8 +168,7 @@ closeConnection(asynUser *pasynUser,ttyController_t *tty,const char *why)
         epicsSocketDestroy(tty->fd);
         tty->fd = -1;
     }
-    if (!(tty->flags & FLAG_CONNECT_PER_TRANSACTION))
-        pasynManager->exceptionDisconnect(pasynUser);
+    pasynManager->exceptionDisconnect(pasynUser);
 }
 
 /*Beginning of asynCommon methods*/
@@ -188,7 +176,7 @@ closeConnection(asynUser *pasynUser,ttyController_t *tty,const char *why)
  * Report link parameters
  */
 static void
-asynCommonReport(void *drvPvt, FILE *fp, int details)
+report(void *drvPvt, FILE *fp, int details)
 {
     ttyController_t *tty = (ttyController_t *)drvPvt;
 
@@ -225,7 +213,7 @@ cleanup (void *arg)
 
 /*
  * Create a link
-*/
+ */
 static asynStatus
 connectIt(void *drvPvt, asynUser *pasynUser)
 {
@@ -266,7 +254,7 @@ connectIt(void *drvPvt, asynUser *pasynUser)
          * Enable broadcasts if so requested
          */
         i = 1;
-        if ((tty->flags & FLAG_BROADCAST)
+        if (tty->broadcastFlag
          && (setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (void *)&i, sizeof i) < 0)) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                           "Can't set %s socket BROADCAST option: %s\n",
@@ -307,32 +295,18 @@ connectIt(void *drvPvt, asynUser *pasynUser)
 
     asynPrint(pasynUser, ASYN_TRACE_FLOW,
                           "Opened connection to %s\n", tty->IPDeviceName);
+    pasynManager->exceptionConnect(pasynUser);
     tty->fd = fd;
     return asynSuccess;
 }
 
 static asynStatus
-asynCommonConnect(void *drvPvt, asynUser *pasynUser)
-{
-    ttyController_t *tty = (ttyController_t *)drvPvt;
-    asynStatus status = asynSuccess;
-
-    if (!(tty->flags & FLAG_CONNECT_PER_TRANSACTION))
-        status = connectIt(drvPvt, pasynUser);
-    if (status == asynSuccess)
-        pasynManager->exceptionConnect(pasynUser);
-    return status;
-}
-
-static asynStatus
-asynCommonDisconnect(void *drvPvt, asynUser *pasynUser)
+disconnect(void *drvPvt, asynUser *pasynUser)
 {
     ttyController_t *tty = (ttyController_t *)drvPvt;
 
     assert(tty);
     closeConnection(pasynUser,tty,"Disconnect request");
-    if (tty->flags & FLAG_CONNECT_PER_TRANSACTION)
-        pasynManager->exceptionDisconnect(pasynUser);
     return asynSuccess;
 }
 
@@ -359,15 +333,9 @@ static asynStatus writeIt(void *drvPvt, asynUser *pasynUser,
                 "%s write %d\n", tty->IPDeviceName, numchars);
     *nbytesTransfered = 0;
     if (tty->fd < 0) {
-        if (tty->flags & FLAG_CONNECT_PER_TRANSACTION) {
-            if ((status = connectIt(drvPvt, pasynUser)) != asynSuccess)
-                return status;
-        }
-        else {
-            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                          "%s disconnected:", tty->IPDeviceName);
-            return asynError;
-        }
+        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                      "%s disconnected:", tty->IPDeviceName);
+        return asynError;
     }
     if (numchars == 0)
         return asynSuccess;
@@ -452,22 +420,15 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     ttyController_t *tty = (ttyController_t *)drvPvt;
     int thisRead;
     int readPollmsec;
-    int reason = 0;
     asynStatus status = asynSuccess;
 
     assert(tty);
     asynPrint(pasynUser, ASYN_TRACE_FLOW,
               "%s read.\n", tty->IPDeviceName);
     if (tty->fd < 0) {
-        if (tty->flags & FLAG_CONNECT_PER_TRANSACTION) {
-            if ((status = connectIt(drvPvt, pasynUser)) != asynSuccess)
-                return status;
-        }
-        else {
-            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                          "%s disconnected:", tty->IPDeviceName);
-            return asynError;
-        }
+        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                      "%s disconnected:", tty->IPDeviceName);
+        return asynError;
     }
     if (maxchars <= 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
@@ -525,7 +486,7 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
                       "%s connection closed",
                       tty->IPDeviceName);
         closeConnection(pasynUser,tty,"Read from broken connection");
-        reason |= ASYN_EOM_END;
+        status = asynError;
     }
     if (thisRead < 0)
         thisRead = 0;
@@ -533,9 +494,8 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     /* If there is room add a null byte */
     if (thisRead < (int) maxchars)
         data[thisRead] = 0;
-    else
-        reason |= ASYN_EOM_CNT;
-    if (gotEom) *gotEom = reason;
+    else if (gotEom)
+        *gotEom = ASYN_EOM_CNT;
     return status;
 }
 
@@ -585,20 +545,20 @@ ttyCleanup(ttyController_t *tty)
  * asynCommon methods
  */
 static const struct asynCommon drvAsynIPPortAsynCommon = {
-    asynCommonReport,
-    asynCommonConnect,
-    asynCommonDisconnect
+    report,
+    connectIt,
+    disconnect
 };
 
 /*
  * Configure and register an IP socket from a hostInfo string
  */
-epicsShareFunc int
+int
 drvAsynIPPortConfigure(const char *portName,
-                       const char *hostInfo,
-                       unsigned int priority,
-                       int noAutoConnect,
-                       int noProcessEos)
+                     const char *hostInfo,
+                     unsigned int priority,
+                     int noAutoConnect,
+                     int noProcessEos)
 {
     ttyController_t *tty;
     asynInterface *pasynInterface;
@@ -608,7 +568,6 @@ drvAsynIPPortConfigure(const char *portName,
     char protocol[6];
     int nbytes;
     asynOctet *pasynOctet;
-    int isCom = 0;
     static int firstTime = 1;
 
     /*
@@ -667,25 +626,17 @@ drvAsynIPPortConfigure(const char *portName,
     *cp = ':';
     tty->farAddr.ia.sin_port = htons(port);
     tty->farAddr.ia.sin_family = AF_INET;
-    tty->flags = 0;
+    tty->broadcastFlag = 0;
     if ((protocol[0] ==  '\0')
      || (epicsStrCaseCmp(protocol, "tcp") == 0)) {
         tty->socketType = SOCK_STREAM;
-    }
-    else if (epicsStrCaseCmp(protocol, "com") == 0) {
-        isCom = 1;
-        tty->socketType = SOCK_STREAM;
-    }
-    else if (epicsStrCaseCmp(protocol, "http") == 0) {
-        tty->socketType = SOCK_STREAM;
-        tty->flags |= FLAG_CONNECT_PER_TRANSACTION;
     }
     else if (epicsStrCaseCmp(protocol, "udp") == 0) {
         tty->socketType = SOCK_DGRAM;
     }
     else if (epicsStrCaseCmp(protocol, "udp*") == 0) {
         tty->socketType = SOCK_DGRAM;
-        tty->flags |= FLAG_BROADCAST;
+        tty->broadcastFlag = 1;
     }
     else {
         printf("drvAsynIPPortConfigure: Unknown protocol \"%s\".\n", protocol);
@@ -721,19 +672,13 @@ drvAsynIPPortConfigure(const char *portName,
     tty->octet.interfaceType = asynOctetType;
     tty->octet.pinterface  = pasynOctet;
     tty->octet.drvPvt = tty;
-    status = pasynOctetBase->initialize(tty->portName,&tty->octet, 0, 0, 1);
+    status = pasynOctetBase->initialize(tty->portName,&tty->octet,
+        (noProcessEos ? 0 : 1), (noProcessEos ? 0 : 1), 1);
     if(status != asynSuccess) {
         printf("drvAsynIPPortConfigure: pasynOctetBase->initialize failed.\n");
         ttyCleanup(tty);
         return -1;
     }
-    if (isCom && (asynInterposeCOM(tty->portName) != 0)) {
-        printf("drvAsynIPPortConfigure: asynInterposeCOM failed.\n");
-        ttyCleanup(tty);
-        return -1;
-    }
-    if (!noProcessEos)
-        asynInterposeEosConfig(tty->portName, -1, 1, 1);
     tty->pasynUser = pasynManager->createAsynUser(0,0);
     status = pasynManager->connectDevice(tty->pasynUser,tty->portName,-1);
     if(status != asynSuccess) {

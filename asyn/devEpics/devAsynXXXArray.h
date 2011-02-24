@@ -107,7 +107,7 @@ static long initCommon(dbCommon *pr, DBLINK *plink,  \
         goto bad; \
     } \
     pasynInterface = pasynManager->findInterface(pasynUser,asynDrvUserType,1); \
-    if(pasynInterface && pPvt->userParam) { \
+    if(pasynInterface) { \
         asynDrvUser *pasynDrvUser; \
         void       *drvPvt; \
  \

@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * $Id: epicsInterruptibleSyscall.c,v 1.13 2008-05-29 14:28:55 norume Exp $
+ * $Id: epicsInterruptibleSyscall.c,v 1.13 2008/05/29 14:28:55 norume Exp $
  */
 
 #include <stdio.h>

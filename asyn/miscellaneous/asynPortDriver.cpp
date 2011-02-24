@@ -15,52 +15,21 @@
 
 #include <epicsString.h>
 #include <epicsMutex.h>
-#include <epicsThread.h>
 #include <cantProceed.h>
-/* NOTE: This is needed for interruptAccept */
-#include <dbAccess.h>
 
-#define epicsExportSharedSymbols
-#include <shareLib.h>
+#include <asynStandardInterfaces.h>
+
 #include "asynPortDriver.h"
 
 static const char *driverName = "asynPortDriver";
 
-/* I thought this would be a temporary fix until EPICS supported PINI after interruptAccept, which would then be used
- * for input records that need callbacks after output records that also have PINI and that could affect them. But this
- * does not work with asyn device support because of the ring buffer.  Records with SCAN=I/O Intr must not processed
- * for any other reason, including PINI, or the ring buffer can get out of sync. */
-static void callbackTaskC(void *drvPvt)
+paramList::paramList(int startVal, int nValsIn, asynStandardInterfaces *pasynInterfaces)
+    : startVal(startVal), nVals(nValsIn), nFlags(0), pasynInterfaces(pasynInterfaces)
 {
-    asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
-    
-    pPvt->callbackTask();
+     vals = (paramVal *) calloc(nVals, sizeof(paramVal));
+     flags = (int *) calloc(nVals, sizeof(int));
 }
 
-void asynPortDriver::callbackTask()
-{
-    int addr;
-    
-    while(!interruptAccept) epicsThreadSleep(0.1);
-    epicsMutexLock(this->mutexId);
-    for (addr=0; addr<this->maxAddr; addr++) {
-        callParamCallbacks(addr, addr);
-    }
-    epicsMutexUnlock(this->mutexId);
-}
-
-
-/** Constructor for paramList class.
-  * \param[in] nVals Number of parameters in the list.
-  * \param[in] pasynInterfaces Pointer to asynStandardInterfaces structure, used for callbacks */
-paramList::paramList(int nVals, asynStandardInterfaces *pasynInterfaces)
-    : nextParam(0), nVals(nVals), nFlags(0), pasynInterfaces(pasynInterfaces)
-{
-    vals = (paramVal *) calloc(nVals, sizeof(paramVal));
-    flags = (int *) calloc(nVals, sizeof(int));
-}
-
-/** Destructor for paramList class; frees resources allocated in constructor */
 paramList::~paramList()
 {
     free(vals);
@@ -69,234 +38,130 @@ paramList::~paramList()
 
 asynStatus paramList::setFlag(int index)
 {
-    int i;
+    asynStatus status = asynError;
 
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    /* See if we have already set the flag for this parameter */
-    for (i=0; i<this->nFlags; i++) if (this->flags[i] == index) break;
-    /* If not found add a flag */
-    if (i == this->nFlags) this->flags[this->nFlags++] = index;
-    return asynSuccess;
-}
-
-/** Adds a new parameter to the parameter library.
-  * \param[in] name The name of this parameter
-  * \param[in] type The type of this parameter
-  * \param[out] index The parameter number 
-  * \return Returns asynParamAlreadyExists if the parameter already exists, or asynBadParamIndex if
-  * adding this parameter would exceed the size of the parameter list. */
-asynStatus paramList::createParam(const char *name, asynParamType type, int *index)
-{
-    if (this->findParam(name, index) == asynSuccess) return asynParamAlreadyExists;
-    *index = this->nextParam++;
-    if (*index < 0 || *index >= this->nVals) return asynParamBadIndex;
-    this->vals[*index].name = epicsStrDup(name);
-    this->vals[*index].type = type;
-    this->vals[*index].valueDefined = 0;
-    return asynSuccess;
-}
-
-/** Finds a parameter in the parameter library.
-  * \param[in] name The name of this parameter
-  * \param[out] index The parameter number 
-  * \return Returns asynParamNotFound if name is not found in the parameter list. */
-asynStatus paramList::findParam(const char *name, int *index)
-{
-    for (*index=0; *index<this->nVals; (*index)++) {
-        if (name && this->vals[*index].name && (epicsStrCaseCmp(name, this->vals[*index].name) == 0)) return asynSuccess;
+    if (index >= 0 && index < this->nVals)
+    {
+        int i;
+        /* See if we have already set the flag for this parameter */
+        for (i=0; i<this->nFlags; i++) if (this->flags[i] == index) break;
+        /* If not found add a flag */
+        if (i == this->nFlags) this->flags[this->nFlags++] = index;
+        status = asynSuccess;
     }
-    return asynParamNotFound;
+    return status;
 }
 
-/** Sets the value for an integer in the parameter library.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set.
-  * \return Returns asynParamBadIndex if the index is not valid or asynParamWrongType if the parametertype is not asynParamInt32. */
 asynStatus paramList::setInteger(int index, int value)
 {
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamInt32) return asynParamWrongType;
-    if ((!this->vals[index].valueDefined) || (this->vals[index].data.ival != value))
+    asynStatus status = asynError;
+
+    index -= this->startVal;
+    if (index >= 0 && index < this->nVals)
     {
-        this->vals[index].valueDefined = 1;
-        setFlag(index);
-        this->vals[index].data.ival = value;
+        if ( this->vals[index].type != paramInt ||
+             this->vals[index].data.ival != value )
+        {
+            setFlag(index);
+            this->vals[index].type = paramInt;
+            this->vals[index].data.ival = value;
+        }
+        status = asynSuccess;
     }
-    return asynSuccess;
+    return status;
 }
 
-/** Sets the value for an integer in the parameter library.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set.
-  * \param[in] mask Mask to use when setting the value.
-  * \return Returns asynParamBadIndex if the index is not valid or asynParamWrongType if the parameter type is not asynParamUInt32Digital. */
-asynStatus paramList::setUInt32(int index, epicsUInt32 value, epicsUInt32 mask)
-{
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    if ((!this->vals[index].valueDefined) || (this->vals[index].data.uival != value))
-    {
-        this->vals[index].valueDefined = 1;
-        setFlag(index);
-        /* Set any bits that are set in the value and the mask */
-        this->vals[index].data.uival |= (value & mask);
-        /* Clear bits that are clear in the value and set in the mask */
-        this->vals[index].data.uival &= (value | ~mask);
-    }
-    return asynSuccess;
-}
-
-/** Sets the value for a double in the parameter library.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set.
-  * \return Returns asynParamBadIndex if the index is not valid or asynParamWrongType if the parameter type is not asynParamFloat64. */
 asynStatus paramList::setDouble(int index, double value)
 {
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamFloat64) return asynParamWrongType;
-    if ((!this->vals[index].valueDefined) || (this->vals[index].data.dval != value))
+    asynStatus status = asynError;
+
+    index -= this->startVal;
+    if (index >=0 && index < this->nVals)
     {
-        this->vals[index].valueDefined = 1;
-        setFlag(index);
-        this->vals[index].data.dval = value;
+        if ( this->vals[index].type != paramDouble ||
+             this->vals[index].data.dval != value )
+        {
+            setFlag(index);
+            this->vals[index].type = paramDouble;
+            this->vals[index].data.dval = value;
+        }
+        status = asynSuccess;
     }
-    return asynSuccess;
+    return status;
 }
 
-/** Sets the value for a string in the parameter library.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to set.
-  * \return Returns asynParamBadIndex if the index is not valid or asynParamWrongType if the parameter type is not asynParamOctet. */
 asynStatus paramList::setString(int index, const char *value)
 {
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamOctet) return asynParamWrongType;
-    if ((!this->vals[index].valueDefined) || (strcmp(this->vals[index].data.sval, value)))
+    asynStatus status = asynError;
+
+    index -= this->startVal;
+    if (index >=0 && index < this->nVals)
     {
-        this->vals[index].valueDefined = 1;
-        setFlag(index);
-        free(this->vals[index].data.sval);
-        this->vals[index].data.sval = epicsStrDup(value);
+        if ( this->vals[index].type != paramString ||
+             strcmp(this->vals[index].data.sval, value))
+        {
+            setFlag(index);
+            this->vals[index].type = paramString;
+            free(this->vals[index].data.sval);
+            this->vals[index].data.sval = epicsStrDup(value);
+        }
+        status = asynSuccess;
     }
-    return asynSuccess;
+    return status;
 }
 
-/** Returns the value for an integer from the parameter library.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get. 
-  * \return Returns asynParamBadIndex if the index is not valid, asynParamWrongType if the parameter type is not asynParamInt32,
-  * or asynParamUndefined if the value has not been defined. */
 asynStatus paramList::getInteger(int index, int *value)
 {
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamInt32) return asynParamWrongType;
-    if (!this->vals[index].valueDefined) return asynParamUndefined;
-    *value = this->vals[index].data.ival;
-    return asynSuccess;
+    asynStatus status = asynError;
+
+    index -= this->startVal;
+    *value = 0;
+    if (index >= 0 && index < this->nVals)
+    {
+        if (this->vals[index].type == paramInt) {
+            *value = this->vals[index].data.ival;
+            status = asynSuccess;
+        }
+    }
+    return status;
 }
 
-/** Returns the value for an integer from the parameter library.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get.
-  * \param[in] mask The mask to use when getting the value.
-  * \return Returns asynParamBadIndex if the index is not valid, asynParamWrongType if the parameter type is not asynParamUInt32Digital,
-  * or asynParamUndefined if the value has not been defined. */
-asynStatus paramList::getUInt32(int index, epicsUInt32 *value, epicsUInt32 mask)
-{
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    if (!this->vals[index].valueDefined) return asynParamUndefined;
-    *value = this->vals[index].data.uival & mask;
-    return asynSuccess;
-}
-
-/** Returns the value for a double from the parameter library.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get.
-  * \return Returns asynParamBadIndex if the index is not valid, asynParamWrongType if the parameter type is not asynParamFloat64,
-  * or asynParamUndefined if the value has not been defined. */
 asynStatus paramList::getDouble(int index, double *value)
 {
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamFloat64) return asynParamWrongType;
-    if (!this->vals[index].valueDefined) return asynParamUndefined;
-    *value = this->vals[index].data.dval;
-    return asynSuccess;
+    asynStatus status = asynError;
+
+    index -= this->startVal;
+    *value = 0.;
+    if (index >= 0 && index < this->nVals)
+    {
+        if (this->vals[index].type == paramDouble) {
+            *value = this->vals[index].data.dval;
+            status = asynSuccess;
+        }
+    }
+    return status;
 }
 
-/** Sets the value of the UInt32Interrupt in the parameter library.
-  * \param[in] index The parameter number 
-  * \param[in] mask The interrupt mask. 
-  * \param[in] reason The interrupt reason. 
-  * \return Returns asynParamBadIndex if the index is not valid, 
-  * or asynParamWrongType if the parameter type is not asynParamUInt32Digital */
-asynStatus paramList::setUInt32Interrupt(int index, epicsUInt32 mask, interruptReason reason)
-{
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    this->vals[index].uInt32InterruptMask = mask;
-    this->vals[index].uInt32InterruptReason = reason;
-    return asynSuccess;
-}
-
-/** Clears the UInt32Interrupt in the parameter library.
-  * \param[in] index The parameter number 
-  * \param[in] mask The interrupt mask. 
-  * \return Returns asynParamBadIndex if the index is not valid, 
-  * or asynParamWrongType if the parameter type is not asynParamUInt32Digital */
-asynStatus paramList::clearUInt32Interrupt(int index, epicsUInt32 mask)
-{
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    this->vals[index].uInt32InterruptMask = mask;
-    return asynSuccess;
-}
-
-/** Returns the UInt32Interrupt from the parameter library.
-  * \param[in] index The parameter number 
-  * \param[out] mask The address of the interrupt mask to return. 
-  * \param[in] reason The interrupt reason. 
-  * \return Returns asynParamBadIndex if the index is not valid, 
-  * or asynParamWrongType if the parameter type is not asynParamUInt32Digital */
-asynStatus paramList::getUInt32Interrupt(int index, epicsUInt32 *mask, interruptReason reason)
-{
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    *mask = this->vals[index].uInt32InterruptMask;
-    return asynSuccess;
-}
-
-/** Returns the value for a string from the parameter library.
-  * \param[in] index The parameter number 
-  * \param[in] maxChars Maximum number of characters to return.
-  * \param[out] value Address of value to get.
-  * \return Returns asynParamBadIndex if the index is not valid, asynParamWrongType if the parameter type is not asynParamOctet,
-  * or asynParamUndefined if the value has not been defined. */
 asynStatus paramList::getString(int index, int maxChars, char *value)
 {
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    if (this->vals[index].type != asynParamOctet) return asynParamWrongType;
-    if (!this->vals[index].valueDefined) return asynParamUndefined;
-    if (maxChars > 0) {
-        strncpy(value, this->vals[index].data.sval, maxChars-1);
-        value[maxChars-1] = '\0';
+    asynStatus status = asynError;
+
+    index -= this->startVal;
+    value[0]=0;
+    if (index >= 0 && index < this->nVals)
+    {
+        if (this->vals[index].type == paramString) {
+            if (maxChars > 0) {
+                strncpy(value, this->vals[index].data.sval, maxChars-1);
+                value[maxChars-1] = '\0';
+            }
+            status = asynSuccess;
+        }
     }
-    return asynSuccess;
+    return status;
 }
 
-/** Returns the name of a parameter from the parameter library.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of pointer that will contain name string pointer.
-  * \return Returns asynParamBadIndex if the index is not valid */
-asynStatus paramList::getName(int index, const char **value)
-{
-    if (index < 0 || index >= this->nVals) return asynParamBadIndex;
-    *value = (const char *)this->vals[index].name;
-    return asynSuccess;
-}
-
-/** Calls the registered asyn callback functions for all clients for an integer parameter */
-asynStatus paramList::int32Callback(int command, int addr, epicsInt32 value)
+asynStatus paramList::intCallback(int command, int addr, int value)
 {
     ELLLIST *pclientList;
     interruptNode *pnode;
@@ -304,7 +169,7 @@ asynStatus paramList::int32Callback(int command, int addr, epicsInt32 value)
     int address;
 
     /* Pass int32 interrupts */
-    if (!pInterfaces->int32InterruptPvt) return(asynParamNotFound);
+    if (!pInterfaces->int32InterruptPvt) return(asynError);
     pasynManager->interruptStart(pInterfaces->int32InterruptPvt, &pclientList);
     pnode = (interruptNode *)ellFirst(pclientList);
     while (pnode) {
@@ -324,38 +189,7 @@ asynStatus paramList::int32Callback(int command, int addr, epicsInt32 value)
     return(asynSuccess);
 }
 
-/** Calls the registered asyn callback functions for all clients for an UInt32 parameter */
-asynStatus paramList::uint32Callback(int command, int addr, epicsUInt32 value, epicsUInt32 interruptMask)
-{
-    ELLLIST *pclientList;
-    interruptNode *pnode;
-    asynStandardInterfaces *pInterfaces = this->pasynInterfaces;
-    int address;
-
-    /* Pass UInt32Digital interrupts */
-    if (!pInterfaces->uInt32DigitalInterruptPvt) return(asynParamNotFound);
-    pasynManager->interruptStart(pInterfaces->uInt32DigitalInterruptPvt, &pclientList);
-    pnode = (interruptNode *)ellFirst(pclientList);
-    while (pnode) {
-        asynUInt32DigitalInterrupt *pInterrupt = (asynUInt32DigitalInterrupt *) pnode->drvPvt;
-        pasynManager->getAddr(pInterrupt->pasynUser, &address);
-        /* If this is not a multi-device then address is -1, change to 0 */
-        if (address == -1) address = 0;
-        if ((command == pInterrupt->pasynUser->reason) &&
-            (address == addr) &&
-            (pInterrupt->mask & interruptMask)) {
-            pInterrupt->callback(pInterrupt->userPvt, 
-                                 pInterrupt->pasynUser,
-                                 pInterrupt->mask & value);
-        }
-        pnode = (interruptNode *)ellNext(&pnode->node);
-    }
-    pasynManager->interruptEnd(pInterfaces->uInt32DigitalInterruptPvt);
-    return(asynSuccess);
-}
-
-/** Calls the registered asyn callback functions for all clients for a double parameter */
-asynStatus paramList::float64Callback(int command, int addr, epicsFloat64 value)
+asynStatus paramList::doubleCallback(int command, int addr, double value)
 {
     ELLLIST *pclientList;
     interruptNode *pnode;
@@ -363,7 +197,7 @@ asynStatus paramList::float64Callback(int command, int addr, epicsFloat64 value)
     int address;
 
     /* Pass float64 interrupts */
-    if (!pInterfaces->float64InterruptPvt) return(asynParamNotFound);
+    if (!pInterfaces->float64InterruptPvt) return(asynError);
     pasynManager->interruptStart(pInterfaces->float64InterruptPvt, &pclientList);
     pnode = (interruptNode *)ellFirst(pclientList);
     while (pnode) {
@@ -383,8 +217,7 @@ asynStatus paramList::float64Callback(int command, int addr, epicsFloat64 value)
     return(asynSuccess);
 }
 
-/** Calls the registered asyn callback functions for all clients for a string parameter */
-asynStatus paramList::octetCallback(int command, int addr, char *value)
+asynStatus paramList::stringCallback(int command, int addr, char *value)
 {
     ELLLIST *pclientList;
     interruptNode *pnode;
@@ -392,7 +225,7 @@ asynStatus paramList::octetCallback(int command, int addr, char *value)
     int address;
 
     /* Pass octet interrupts */
-    if (!pInterfaces->octetInterruptPvt) return(asynParamNotFound);
+    if (!pInterfaces->octetInterruptPvt) return(asynError);
     pasynManager->interruptStart(pInterfaces->octetInterruptPvt, &pclientList);
     pnode = (interruptNode *)ellFirst(pclientList);
     while (pnode) {
@@ -412,38 +245,27 @@ asynStatus paramList::octetCallback(int command, int addr, char *value)
     return(asynSuccess);
 }
 
-/** Calls the registered asyn callback functions for all clients for any parameters that have changed
-  * since the last time this function was called.
-  * \param[in] addr A client will be called if addr matches the asyn address registered for that client.
-  *
-  * Don't do anything if interruptAccept=0.  
-  * There is a thread that will do all callbacks once when interruptAccept goes to 1.
-  */
 asynStatus paramList::callCallbacks(int addr)
 {
     int i, index;
+    int command;
     asynStatus status = asynSuccess;
-    
-    if (!interruptAccept) return(asynSuccess);
-    
+
     for (i = 0; i < this->nFlags; i++)
     {
         index = this->flags[i];
-        if (!this->vals[index].valueDefined) return(status);
+        command = index + this->startVal;
         switch(this->vals[index].type) {
-            case asynParamInt32:
-                status = int32Callback(index, addr, this->vals[index].data.ival);
+            case paramUndef:
                 break;
-            case asynParamUInt32Digital:
-                status = uint32Callback(index, addr, this->vals[index].data.uival, this->vals[index].uInt32InterruptMask);
+            case paramInt:
+                status = intCallback(command, addr, this->vals[index].data.ival);
                 break;
-            case asynParamFloat64:
-                status = float64Callback(index, addr, this->vals[index].data.dval);
+            case paramDouble:
+                status = doubleCallback(command, addr, this->vals[index].data.dval);
                 break;
-            case asynParamOctet:
-                status = octetCallback(index, addr, this->vals[index].data.sval);
-                break;
-            default:
+            case paramString:
+                status = stringCallback(command, addr, this->vals[index].data.sval);
                 break;
         }
     }
@@ -456,462 +278,106 @@ asynStatus paramList::callCallbacks()
     return(callCallbacks(0));
 }
 
-/** Reports on status of the paramList
-  * \param[in] fp The file pointer on which report information will be written
-  * \param[in] details The level of report detail desired. Prints the number of parameters in the list,
-  * and if details >1 also prints the index, data type, name, and value of each parameter. 
- */
-void paramList::report(FILE *fp, int details)
+void paramList::report()
 {
     int i;
 
     printf( "Number of parameters is: %d\n", this->nVals );
-    if (details <= 1) return;
     for (i=0; i<this->nVals; i++)
     {
         switch (this->vals[i].type)
         {
-            case asynParamInt32:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynInt32, name=%s, value=%d\n", i, this->vals[i].name, this->vals[i].data.ival );
-                else
-                    fprintf(fp, "Parameter %d type=asynInt32, name=%s, value is undefined\n", i, this->vals[i].name);
+            case paramDouble:
+                printf( "Parameter %d is a double, value %f\n", i+this->startVal, this->vals[i].data.dval );
                 break;
-            case asynParamUInt32Digital:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynUInt32Digital, name=%s, value=%u, mask=%u\n", i, this->vals[i].name, 
-                        this->vals[i].data.uival, this->vals[i].uInt32Mask );
-                else
-                    fprintf(fp, "Parameter %d type=asynUInt32Digital, name=%s, value is undefined\n", i, this->vals[i].name);
+            case paramInt:
+                printf( "Parameter %d is an integer, value %d\n", i+this->startVal, this->vals[i].data.ival );
                 break;
-            case asynParamFloat64:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynFloat64, name=%s, value=%f\n", i, this->vals[i].name, this->vals[i].data.dval );
-                else
-                    fprintf(fp, "Parameter %d type=asynFloat64, name=%s, value is undefined\n", i, this->vals[i].name);
-                break;
-            case asynParamOctet:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=string, name=%s, value=%s\n", i, this->vals[i].name, this->vals[i].data.sval );
-                else
-                    fprintf(fp, "Parameter %d type=string, name=%s, value is undefined\n", i, this->vals[i].name);
-                break;
-            case asynParamInt8Array:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynInt8Array, name=%s, value=%p\n", i, this->vals[i].name, this->vals[i].data.pi8 );
-                else
-                    fprintf(fp, "Parameter %d type=asynInt8Array, name=%s, value is undefined\n", i, this->vals[i].name);
-                break;
-            case asynParamInt16Array:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynInt16Array, name=%s, value=%p\n", i, this->vals[i].name, this->vals[i].data.pi16 );
-                else
-                    fprintf(fp, "Parameter %d type=asynInt16Array, name=%s, value is undefined\n", i, this->vals[i].name);
-                break;
-            case asynParamInt32Array:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynInt32Array, name=%s, value=%p\n", i, this->vals[i].name, this->vals[i].data.pi32 );
-                else
-                    fprintf(fp, "Parameter %d type=asynInt32Array, name=%s, value is undefined\n", i, this->vals[i].name);
-                break;
-            case asynParamFloat32Array:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynFloat32Array, name=%s, value=%p\n", i, this->vals[i].name, this->vals[i].data.pf32 );
-                else
-                    fprintf(fp, "Parameter %d type=asynFloat32Array, name=%s, value is undefined\n", i, this->vals[i].name);
-                break;
-            case asynParamFloat64Array:
-                if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynFloat64Array, name=%s, value=%p\n", i, this->vals[i].name, this->vals[i].data.pf64 );
-                else
-                    fprintf(fp, "Parameter %d type=asynFloat64Array, name=%s, value is undefined\n", i, this->vals[i].name);
+            case paramString:
+                printf( "Parameter %d is a string, value %s\n", i+this->startVal, this->vals[i].data.sval );
                 break;
             default:
-                fprintf(fp, "Parameter %d is undefined, name=%s\n", i, this->vals[i].name);
+                printf( "Parameter %d is undefined\n", i+this->startVal );
                 break;
         }
     }
 }
 
-/** Locks the driver to prevent multiple threads from accessing memory at the same time.
-  * This function is called whenever asyn clients call the functions on the asyn interfaces.
-  * Drivers with their own background threads must call lock() to protect conflicts with
-  * asyn clients.  They can call unlock() to permit asyn clients to run during times that the driver
-  * thread is idle or is performing compute bound work that does not access memory also accessible by clients. */
-asynStatus asynPortDriver::lock()
-{
-    int status;
-    status = epicsMutexLock(this->mutexId);
-    if (status) return(asynError);
-    else return(asynSuccess);
-}
-
-/** Unocks the driver; called when an asyn client or driver is done accessing common memory. */
-asynStatus asynPortDriver::unlock()
-{
-    epicsMutexUnlock(this->mutexId);
-    return(asynSuccess);
-}
-
-/** Creates a parameter in the parameter library.
-  * Calls paramList::createParam (list, name, index) for all parameters lists.
-  * \param[in] name Parameter name
-  * \param[in] type Parameter type
-  * \param[out] index Parameter number */
-asynStatus asynPortDriver::createParam(const char *name, asynParamType type, int *index)
-{
-    int list;
-    asynStatus status;
-    
-    /* All parameters lists support the same parameters, so add the parameter name to all lists */
-    for (list=0; list<this->maxAddr; list++) {
-        status = createParam(list, name, type, index);
-        if (status) return asynError;
-    }
-    return asynSuccess;
-}
-
-/** Creates a parameter in the parameter library.
-  * Calls paramList::addParam (name, index) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] name Parameter name
-  * \param[in] type Parameter type
-  * \param[out] index Parameter number */
-asynStatus asynPortDriver::createParam(int list, const char *name, asynParamType type, int *index)
-{
-    asynStatus status;
-    int itemp;
-    static const char *functionName = "createParam";
-    
-    status = this->params[list]->findParam(name, &itemp);
-    if (status == asynParamAlreadyExists) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error adding parameter %s to list %d, parameter already exists.\n",
-            driverName, functionName, portName, name, list);
-        return(asynError);
-    }
-    status = this->params[list]->createParam(name, type, index);
-    if (status == asynParamBadIndex) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error adding parameter %s to list %d, too many parameters\n",
-            driverName, functionName, portName, name, list);
-        return(asynError);
-    }
-    return asynSuccess;
-}
-
-/** Finds a parameter in the parameter library.
-  * Calls findParam(0, name, index), i.e. for parameter list 0.
-  * \param[in] name Parameter name
-  * \param[out] index Parameter number */
-asynStatus asynPortDriver::findParam(const char *name, int *index)
-{
-    return this->findParam(0, name, index);
-}
-
-/** Finds a parameter in the parameter library.
-  * Calls paramList::findParam (name, index) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] name Parameter name
-  * \param[out] index Parameter number */
-asynStatus asynPortDriver::findParam(int list, const char *name, int *index)
-{
-    return this->params[list]->findParam(name, index);
-}
-
-/** Returns the name of a parameter in the parameter library.
-  * Calls getParamName(0, index, name) i.e. for parameter list 0.
-  * \param[in] index Parameter number
-  * \param[out] name Parameter name */
-asynStatus asynPortDriver::getParamName(int index, const char **name)
-{
-    return this->getParamName(0, index, name);
-}
-
-/** Returns the name of a parameter in the parameter library.
-  * Calls paramList::getName (index, name) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index Parameter number
-  * \param[out] name Parameter name */
-asynStatus asynPortDriver::getParamName(int list, int index, const char **name)
-{
-    return this->params[list]->getName(index, name);
-}
-
-/** Reports errors when setting parameters.  
-  * \param[in] status The error status.
-  * \param[in] index The parameter number
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] functionName The name of the function that generated the error  */
-void asynPortDriver::reportSetParamErrors(asynStatus status, int index, int list, const char *functionName)
-{
-    if (status == asynParamBadIndex) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error setting parameter %d in list %d, bad index\n",
-            driverName, functionName, portName, index, list);
-    }
-    if (status == asynParamWrongType) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error setting parameter %d in list %d, wrong type\n",
-            driverName, functionName, portName, index, list);
-    }
-}
-
-/** Sets the value for an integer in the parameter library.
-  * Calls setIntegerParam(0, index, value) i.e. for parameter list 0.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set. */
 asynStatus asynPortDriver::setIntegerParam(int index, int value)
 {
-    return this->setIntegerParam(0, index, value);
+    return this->params[0]->setInteger(index, value);
 }
 
-/** Sets the value for an integer in the parameter library.
-  * Calls paramList::setInteger (index, value) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set. */
 asynStatus asynPortDriver::setIntegerParam(int list, int index, int value)
 {
-    asynStatus status;
-    static const char *functionName = "setIntegerParam";
-    
-    status = this->params[list]->setInteger(index, value);
-    if (status) reportSetParamErrors(status, index, list, functionName);
-    return(status);
+    return this->params[list]->setInteger(index, value);
 }
 
-/** Sets the value for a UInt32Digital in the parameter library.
-  * Calls setUIntDigitalParam(0, index, value) i.e. for parameter list 0.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set. 
-  * \param[in] mask The mask to use when setting the value. */
-asynStatus asynPortDriver::setUIntDigitalParam(int index, epicsUInt32 value, epicsUInt32 mask)
-{
-    return this->setUIntDigitalParam(0, index, value, mask);
-}
-
-/** Sets the value for a UInt32Digital in the parameter library.
-  * Calls paramList::setInteger (index, value) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set. 
-  * \param[in] mask The mask to use when setting the value. */
-asynStatus asynPortDriver::setUIntDigitalParam(int list, int index, epicsUInt32 value, epicsUInt32 mask)
-{
-    asynStatus status;
-    static const char *functionName = "setUIntDigitalParam";
-    
-    status = this->params[list]->setUInt32(index, value, mask);
-    if (status) reportSetParamErrors(status, index, list, functionName);
-    return(status);
-}
-
-/** Sets the value for a double in the parameter library.
-  * Calls setDoubleParam(0, index, value) i.e. for parameter list 0.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set. */
 asynStatus asynPortDriver::setDoubleParam(int index, double value)
 {
-    return this->setDoubleParam(0, index, value);
+    return this->params[0]->setDouble(index, value);
 }
 
-/** Sets the value for a double in the parameter library.
-  * Calls paramList::setDouble (index, value) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index The parameter number 
-  * \param[in] value Value to set. */
 asynStatus asynPortDriver::setDoubleParam(int list, int index, double value)
 {
-    asynStatus status;
-    static const char *functionName = "setDoubleParam";
-    
-    status = this->params[list]->setDouble(index, value);
-    if (status) reportSetParamErrors(status, index, list, functionName);
-    return(status);
+    return this->params[list]->setDouble(index, value);
 }
 
-/** Sets the value for a string in the parameter library.
-  * Calls setStringParam(0, index, value) i.e. for parameter list 0.
-  * \param[in] index The parameter number 
-  * \param[in] value Address of value to set. */
 asynStatus asynPortDriver::setStringParam(int index, const char *value)
 {
-    return this->setStringParam(0, index, value);
+    return this->params[0]->setString(index, value);
 }
 
-/** Sets the value for a string in the parameter library.
-  * Calls paramList::setString (index, value) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index The parameter number 
-  * \param[in] value Address of value to set. */
 asynStatus asynPortDriver::setStringParam(int list, int index, const char *value)
 {
-    asynStatus status;
-    static const char *functionName = "setStringParam";
-
-    status = this->params[list]->setString(index, value);
-    if (status) reportSetParamErrors(status, index, list, functionName);
-    return(status);
+    return this->params[list]->setString(index, value);
 }
 
-/** Reports errors when getting parameters.  
-  * asynParamBadIndex and asynParamWrongType are printed with ASYN_TRACE_ERROR because they should never happen.
-  * asynParamUndefined is printed with ASYN_TRACE_FLOW because it is an expected error if the value is read before it
-  * is defined, which device support can do.
-  * \param[in] status The error status.
-  * \param[in] index The parameter number
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] functionName The name of the function that generated the error  */
-void asynPortDriver::reportGetParamErrors(asynStatus status, int index, int list, const char *functionName)
-{
-    if (status == asynParamBadIndex) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error getting parameter %d in list %d, bad index\n",
-            driverName, functionName, portName, index, list);
-    }
-    if (status == asynParamWrongType) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error getting parameter %d in list %d, wrong type\n",
-            driverName, functionName, portName, index, list);
-    }
-    if (status == asynParamUndefined) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
-            "%s:%s: port=%s error getting parameter %d in list %d, value undefined\n",
-            driverName, functionName, portName, index, list);
-    }
-}
 
-/** Returns the value for an integer from the parameter library.
-  * Calls getIntegerParam(0, index, value) i.e. for parameter list 0.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get. */
 asynStatus asynPortDriver::getIntegerParam(int index, int *value)
 {
-    return this->getIntegerParam(0, index, value);
+    return this->params[0]->getInteger(index, value);
 }
 
-/** Returns the value for an integer from the parameter library.
-  * Calls paramList::getInteger (index, value) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get. */
 asynStatus asynPortDriver::getIntegerParam(int list, int index, int *value)
 {
-    asynStatus status;
-    static const char *functionName = "getIntegerParam";
-
-    status = this->params[list]->getInteger(index, value);
-    if (status) reportGetParamErrors(status, index, list, functionName);
-    return(status);
+    return this->params[list]->getInteger(index, value);
 }
 
-/** Returns the value for an UInt32Digital parameter from the parameter library.
-  * Calls getUIntDigitalParam(0, index, value, mask) i.e. for parameter list 0.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get.
-  * \param[in] mask The mask to apply when getting the value */
-asynStatus asynPortDriver::getUIntDigitalParam(int index, epicsUInt32 *value, epicsUInt32 mask)
-{
-    return this->getUIntDigitalParam(0, index, value, mask);
-}
-
-/** Returns the value for an UInt32Digital parameter from the parameter library.
-  * Calls paramList::getUInt32 (index, value, mask) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get.
-  * \param[in] mask The mask to apply when getting the value. */
-asynStatus asynPortDriver::getUIntDigitalParam(int list, int index, epicsUInt32 *value, epicsUInt32 mask)
-{
-    asynStatus status;
-    static const char *functionName = "getUIntDigitalParam";
-
-    status = this->params[list]->getUInt32(index, value, mask);
-    if (status) reportGetParamErrors(status, index, list, functionName);
-    return(status);
-}
-
-/** Returns the value for a double from the parameter library.
-  * Calls getDoubleParam(0, index, value) i.e. for parameter list 0.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get. */
 asynStatus asynPortDriver::getDoubleParam(int index, double *value)
 {
-    return this->getDoubleParam(0, index, value);
+    return this->params[0]->getDouble(index, value);
 }
 
-/** Returns the value for a double from the parameter library.
-  * Calls paramList::getDouble (index, value) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index The parameter number 
-  * \param[out] value Address of value to get. */
 asynStatus asynPortDriver::getDoubleParam(int list, int index, double *value)
 {
-    asynStatus status;
-    static const char *functionName = "getDoubleParam";
-
-    status = this->params[list]->getDouble(index, value);
-    if (status) reportGetParamErrors(status, index, list, functionName);
-    return(status);
+    return this->params[list]->getDouble(index, value);
 }
 
-/** Returns the value for a string from the parameter library.
-  * Calls getStringParam(0, index, maxChars, value) i.e. for parameter list 0.
-  * \param[in] index The parameter number 
-  * \param[in] maxChars Maximum number of characters to return.
-  * \param[out] value Address of value to get. */
 asynStatus asynPortDriver::getStringParam(int index, int maxChars, char *value)
 {
-    return this->getStringParam(0, index, maxChars, value);
+    return this->params[0]->getString(index, maxChars, value);
 }
 
-/** Returns the value for a string from the parameter library.
-  * Calls paramList::getString (index, maxChars, value) for the parameter list indexed by list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] index The parameter number 
-  * \param[in] maxChars Maximum number of characters to return.
-  * \param[out] value Address of value to get. */
 asynStatus asynPortDriver::getStringParam(int list, int index, int maxChars, char *value)
 {
-    asynStatus status;
-    static const char *functionName = "getStringParam";
-
-    status = this->params[list]->getString(index, maxChars, value);
-    if (status) reportGetParamErrors(status, index, list, functionName);
-    return(status);
+    return this->params[list]->getString(index, maxChars, value);
 }
 
-/** Calls callParamCallbacks(0, 0) i.e. with both list and asyn address. */
 asynStatus asynPortDriver::callParamCallbacks()
 {
-    return this->callParamCallbacks(0, 0);
+    return this->params[0]->callCallbacks();
 }
 
-/** Calls callParamCallbacks(addr, addr) i.e. with list=addr, which is normal. */
-asynStatus asynPortDriver::callParamCallbacks(int addr)
-{
-    return this->callParamCallbacks(addr, addr);
-}
-
-/** Calls paramList::callCallbacks(addr) for a specific parameter list.
-  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
-  * \param[in] addr The asyn address to be used in the callback.  Typically the same value as list. */
 asynStatus asynPortDriver::callParamCallbacks(int list, int addr)
 {
     return this->params[list]->callCallbacks(addr);
 }
 
-/** Calls paramList::report(fp, details) for each parameter list that the driver supports. 
-  * \param[in] fp The file pointer on which report information will be written
-  * \param[in] details The level of report detail desired. */
-void asynPortDriver::reportParams(FILE *fp, int details)
+void asynPortDriver::reportParams()
 {
     int i;
-    for (i=0; i<this->maxAddr; i++) {
-        fprintf(fp, "Parameter list %d\n", i);
-        this->params[i]->report(fp, details);
-    }
+    for (i=0; i<this->maxAddr; i++) this->params[i]->report();
 }
 
 
@@ -979,22 +445,15 @@ void reportInterrupt(FILE *fp, void *interruptPvt, const char *interruptTypeStri
     }
 }
 
-/** Returns the asyn address associated with a pasynUser structure.
-  * Derived classes rarely need to reimplement this function.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[out] address Returned address. 
-  * \return Returns asynError if the address is > maxAddr value passed to asynPortDriver::asynPortDriver. */
-asynStatus asynPortDriver::getAddress(asynUser *pasynUser, int *address) 
+asynStatus asynPortDriver::getAddress(asynUser *pasynUser, const char *functionName, int *address) 
 {
-    static const char *functionName = "getAddress";
-    
     pasynManager->getAddr(pasynUser, address);
     /* If this is not a multi-device then address is -1, change to 0 */
     if (*address == -1) *address = 0;
     if (*address > this->maxAddr-1) {
-        asynPrint(pasynUser, ASYN_TRACE_ERROR,
-            "%s:%s: %s invalid address=%d, max=%d\n",
-            driverName, functionName, portName, *address, this->maxAddr-1);
+        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize,
+            "%s:%s: invalid address=%d, max=%d",
+            driverName, functionName, *address, this->maxAddr-1);
         return(asynError);
     }
     return(asynSuccess);
@@ -1008,17 +467,12 @@ extern "C" {static asynStatus readInt32(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->readInt32(pasynUser, value);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);
 }}
 
-/** Called when asyn clients call pasynInt32->read().
-  * The base class implementation simply returns the value from the parameter library.  
-  * Derived classes rarely need to reimplement this function.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[out] value Address of the value to read. */
 asynStatus asynPortDriver::readInt32(asynUser *pasynUser, epicsInt32 *value)
 {
     int function = pasynUser->reason;
@@ -1026,7 +480,7 @@ asynStatus asynPortDriver::readInt32(asynUser *pasynUser, epicsInt32 *value)
     asynStatus status = asynSuccess;
     const char *functionName = "readInt32";
     
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
+    status = getAddress(pasynUser, functionName, &addr); if (status != asynSuccess) return(status);
     /* We just read the current value of the parameter from the parameter library.
      * Those values are updated whenever anything could cause them to change */
     status = (asynStatus) getIntegerParam(addr, function, value);
@@ -1047,19 +501,12 @@ extern "C" {static asynStatus writeInt32(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeInt32(pasynUser, value);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);
 }}
 
-/** Called when asyn clients call pasynInt32->write().
-  * The base class implementation simply sets the value in the parameter library and 
-  * calls any registered callbacks for this pasynUser->reason and address.  
-  * Derived classes will reimplement this function if they need to perform an action when an
-  * asynInt32 value is written. 
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Value to write. */
 asynStatus asynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
 {
     int function = pasynUser->reason;
@@ -1067,7 +514,7 @@ asynStatus asynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
     asynStatus status = asynSuccess;
     const char* functionName = "writeInt32";
 
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
+    status = getAddress(pasynUser, functionName, &addr); if (status != asynSuccess) return(status);
 
     /* Set the parameter in the parameter library. */
     status = (asynStatus) setIntegerParam(addr, function, value);
@@ -1092,20 +539,12 @@ extern "C" {static asynStatus getBounds(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->getBounds(pasynUser, low, high);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);
 }}
 
-/** Called when asyn clients call pasynInt32->getBounds(), returning the bounds on the asynInt32 interface
-  * for drivers that use raw units.
-  * Device support uses these values for unit conversion.
-  * The base class implementation simply returns low=0, high=65535.  
-  * Derived classes can reimplement this function if they support raw units with different limits.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[out] low Address of the low limit.
-  * \param[out] high Address of the high limit. */
 asynStatus asynPortDriver::getBounds(asynUser *pasynUser,
                                    epicsInt32 *low, epicsInt32 *high)
 {
@@ -1119,214 +558,6 @@ asynStatus asynPortDriver::getBounds(asynUser *pasynUser,
     return(asynSuccess);
 }
 
-/* asynUInt32Digital interface methods */
-extern "C" {static asynStatus readUInt32Digital(void *drvPvt, asynUser *pasynUser, 
-                            epicsUInt32 *value, epicsUInt32 mask)
-{
-    asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
-    asynStatus status;
-    
-    pPvt->lock();
-    status = pPvt->readUInt32Digital(pasynUser, value, mask);
-    pPvt->unlock();
-    return(status);
-}}
-
-/** Called when asyn clients call pasynUInt32Digital->read().
-  * The base class implementation simply returns the value from the parameter library.  
-  * Derived classes rarely need to reimplement this function.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[out] value Address of the value to read.
-  * \param[in] mask Mask value to use when reading the value. */
-asynStatus asynPortDriver::readUInt32Digital(asynUser *pasynUser, epicsUInt32 *value, epicsUInt32 mask)
-{
-    int function = pasynUser->reason;
-    int addr=0;
-    asynStatus status = asynSuccess;
-    const char *functionName = "readUInt32Digital";
-    
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
-    /* We just read the current value of the parameter from the parameter library.
-     * Those values are updated whenever anything could cause them to change */
-    status = (asynStatus) getUIntDigitalParam(addr, function, value, mask);
-    if (status) 
-        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                  "%s:%s: status=%d, function=%d, value=%u mask=%u", 
-                  driverName, functionName, status, function, *value, mask);
-    else        
-        asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
-              "%s:%s: function=%d, value=%u, mask=%u\n", 
-              driverName, functionName, function, *value, mask);
-    return(status);
-}
-
-extern "C" {static asynStatus writeUInt32Digital(void *drvPvt, asynUser *pasynUser, 
-                            epicsUInt32 value, epicsUInt32 mask)
-{
-    asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
-    asynStatus status;
-    
-    pPvt->lock();
-    status = pPvt->writeUInt32Digital(pasynUser, value, mask);
-    pPvt->unlock();
-    return(status);
-}}
-
-/** Called when asyn clients call pasynUInt32Digital->write().
-  * The base class implementation simply sets the value in the parameter library and 
-  * calls any registered callbacks for this pasynUser->reason and address.  
-  * Derived classes will reimplement this function if they need to perform an action when an
-  * asynInt32 value is written. 
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Value to write.
-  * \param[in] mask Mask value to use when writinging the value. */
-asynStatus asynPortDriver::writeUInt32Digital(asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask)
-{
-    int function = pasynUser->reason;
-    int addr=0;
-    asynStatus status = asynSuccess;
-    const char* functionName = "writeUInt32Digital";
-
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
-
-    /* Set the parameter in the parameter library. */
-    status = (asynStatus) setUIntDigitalParam(addr, function, value, mask);
-
-    /* Do callbacks so higher layers see any changes */
-    status = (asynStatus) callParamCallbacks(addr, addr);
-    
-    if (status) 
-        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                  "%s:%s: status=%d, function=%d, value=%u, mask=%u", 
-                  driverName, functionName, status, function, value, mask);
-    else        
-        asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
-              "%s:%s: function=%d, value=%d, mask=%u\n", 
-              driverName, functionName, function, value, mask);
-    return status;
-}
-
-extern "C" {static asynStatus setInterruptUInt32Digital(void *drvPvt, asynUser *pasynUser, epicsUInt32 mask, interruptReason reason)
-{
-    asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
-    asynStatus status;
-    
-    pPvt->lock();
-    status = pPvt->setInterruptUInt32Digital(pasynUser, mask, reason);
-    pPvt->unlock();
-    return(status);
-}}
-
-/** Called when asyn clients call pasynUInt32Digital->setInterrupt().
-  * The base class implementation simply sets the value in the parameter library.  
-  * Derived classes will reimplement this function if they need to perform an action when an
-  * setInterrupt is called. 
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] mask Interrupt mask. 
-  * \param[in] reason Interrupt reason. */
-asynStatus asynPortDriver::setInterruptUInt32Digital(asynUser *pasynUser, epicsUInt32 mask, interruptReason reason)
-{
-    int function = pasynUser->reason;
-    int addr=0;
-    asynStatus status = asynSuccess;
-    const char* functionName = "setInterruptUInt32Digital";
-
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
-
-    /* Set the parameters in the parameter library. */
-    status = this->params[addr]->setUInt32Interrupt(function, mask, reason);
-
-    if (status) 
-        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                  "%s:%s: status=%d, function=%d, mask=%u, reason=%d", 
-                  driverName, functionName, status, function, mask, reason);
-    else        
-        asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
-              "%s:%s: function=%d, mask=%u, reason=%d\n", 
-              driverName, functionName, function, mask, reason);
-    return status;
-}
-
-extern "C" {static asynStatus clearInterruptUInt32Digital(void *drvPvt, asynUser *pasynUser, epicsUInt32 mask)
-{
-    asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
-    asynStatus status;
-    
-    pPvt->lock();
-    status = pPvt->clearInterruptUInt32Digital(pasynUser, mask);
-    pPvt->unlock();
-    return(status);
-}}
-
-/** Called when asyn clients call pasynUInt32Digital->clearInterrupt().
-  * The base class implementation simply sets the value in the parameter library.  
-  * Derived classes will reimplement this function if they need to perform an action when an
-  * clearInterrupt is called. 
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] mask Interrupt mask. */
-asynStatus asynPortDriver::clearInterruptUInt32Digital(asynUser *pasynUser, epicsUInt32 mask)
-{
-    int function = pasynUser->reason;
-    int addr=0;
-    asynStatus status = asynSuccess;
-    const char* functionName = "clearInterruptUInt32Digital";
-
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
-
-    /* Set the parameters in the parameter library. */
-    status = this->params[addr]->clearUInt32Interrupt(function, mask);
-
-    if (status) 
-        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                  "%s:%s: status=%d, function=%d, mask=%u", 
-                  driverName, functionName, status, function, mask);
-    else        
-        asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
-              "%s:%s: function=%d, mask=%u\n", 
-              driverName, functionName, function, mask);
-    return status;
-}
-
-extern "C" {static asynStatus getInterruptUInt32Digital(void *drvPvt, asynUser *pasynUser, epicsUInt32 *mask, interruptReason reason)
-{
-    asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
-    asynStatus status;
-    
-    pPvt->lock();
-    status = pPvt->getInterruptUInt32Digital(pasynUser, mask, reason);
-    pPvt->unlock();
-    return(status);
-}}
-
-/** Called when asyn clients call pasynUInt32Digital->getInterrupt().
-  * The base class implementation simply returns the value from the parameter library.  
-  * Derived classes rarely need to reimplement this function.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[out] mask Interrupt mask address.
-  * \param[in] reason Interrupt reason. */
-asynStatus asynPortDriver::getInterruptUInt32Digital(asynUser *pasynUser, epicsUInt32 *mask, interruptReason reason)
-{
-    int function = pasynUser->reason;
-    int addr=0;
-    asynStatus status = asynSuccess;
-    const char* functionName = "getInterruptUInt32Digital";
-
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
-
-    /* Get the parameters in the parameter library. */
-    status = this->params[addr]->getUInt32Interrupt(function, mask, reason);
-
-    if (status) 
-        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                  "%s:%s: status=%d, function=%d, mask=%u, reason=%d", 
-                  driverName, functionName, status, function, *mask, reason);
-    else        
-        asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
-              "%s:%s: function=%d, mask=%u, reason=%d\n", 
-              driverName, functionName, function, *mask, reason);
-    return status;
-}
-
 
 /* asynFloat64 interface methods */
 extern "C" {static asynStatus readFloat64(void *drvPvt, asynUser *pasynUser,
@@ -1335,17 +566,12 @@ extern "C" {static asynStatus readFloat64(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->readFloat64(pasynUser, value);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);
 }}
 
-/** Called when asyn clients call pasynFloat64->read().
-  * The base class implementation simply returns the value from the parameter library.  
-  * Derived classes rarely need to reimplement this function.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Address of the value to read. */
 asynStatus asynPortDriver::readFloat64(asynUser *pasynUser, epicsFloat64 *value)
 {
     int function = pasynUser->reason;
@@ -1353,7 +579,7 @@ asynStatus asynPortDriver::readFloat64(asynUser *pasynUser, epicsFloat64 *value)
     asynStatus status = asynSuccess;
     const char *functionName = "readFloat64";
     
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
+    status = getAddress(pasynUser, functionName, &addr); if (status != asynSuccess) return(status);
     /* We just read the current value of the parameter from the parameter library.
      * Those values are updated whenever anything could cause them to change */
     status = (asynStatus) getDoubleParam(addr, function, value);
@@ -1374,19 +600,12 @@ extern "C" {static asynStatus writeFloat64(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeFloat64(pasynUser, value);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);
 }}
 
-/** Called when asyn clients call pasynFloat64->write().
-  * The base class implementation simply sets the value in the parameter library and 
-  * calls any registered callbacks for this pasynUser->reason and address.  
-  * Derived classes will reimplement this function if they need to perform an action when an
-  * asynFloat64 value is written. 
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Value to write. */
 asynStatus asynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 {
     int function = pasynUser->reason;
@@ -1394,7 +613,7 @@ asynStatus asynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
     int addr=0;
     const char *functionName = "writeFloat64";
 
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
+    status = getAddress(pasynUser, functionName, &addr); if (status != asynSuccess) return(status);
  
     /* Set the parameter and readback in the parameter library. */
     status = setDoubleParam(addr, function, value);
@@ -1422,20 +641,12 @@ extern "C" {static asynStatus readOctet(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->readOctet(pasynUser, value, maxChars, nActual, eomReason);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);
 }}
 
-/** Called when asyn clients call pasynOctet->read().
-  * The base class implementation simply returns the value from the parameter library.  
-  * Derived classes rarely need to reimplement this function.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Address of the string to read.
-  * \param[in] maxChars Maximum number of characters to read.
-  * \param[out] nActual Number of characters actually read. Base class sets this to strlen(value).
-  * \param[out] eomReason Reason that read terminated. Base class sets this to ASYN_EOM_END. */
 asynStatus asynPortDriver::readOctet(asynUser *pasynUser,
                             char *value, size_t maxChars, size_t *nActual,
                             int *eomReason)
@@ -1445,7 +656,7 @@ asynStatus asynPortDriver::readOctet(asynUser *pasynUser,
     asynStatus status = asynSuccess;
     const char *functionName = "readOctet";
    
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
+    status = getAddress(pasynUser, functionName, &addr); if (status != asynSuccess) return(status);
     /* We just read the current value of the parameter from the parameter library.
      * Those values are updated whenever anything could cause them to change */
     status = (asynStatus)getStringParam(addr, function, maxChars, value);
@@ -1457,7 +668,7 @@ asynStatus asynPortDriver::readOctet(asynUser *pasynUser,
         asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
               "%s:%s: function=%d, value=%s\n", 
               driverName, functionName, function, value);
-    if (eomReason) *eomReason = ASYN_EOM_END;
+    *eomReason = ASYN_EOM_END;
     *nActual = strlen(value);
     return(status);
 }
@@ -1468,21 +679,12 @@ extern "C" {static asynStatus writeOctet(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeOctet(pasynUser, value, maxChars, nActual);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);
 }}
 
-/** Called when asyn clients call pasynOctet->write().
-  * The base class implementation simply sets the value in the parameter library and 
-  * calls any registered callbacks for this pasynUser->reason and address.  
-  * Derived classes will reimplement this function if they need to perform an action when an
-  * asynOctet value is written.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Address of the string to write.
-  * \param[in] nChars Number of characters to write.
-  * \param[out] nActual Number of characters actually written. */
 asynStatus asynPortDriver::writeOctet(asynUser *pasynUser, const char *value, 
                                     size_t nChars, size_t *nActual)
 {
@@ -1491,7 +693,7 @@ asynStatus asynPortDriver::writeOctet(asynUser *pasynUser, const char *value,
     asynStatus status = asynSuccess;
     const char *functionName = "writeOctet";
 
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
+    status = getAddress(pasynUser, functionName, &addr); if (status != asynSuccess) return(status);
 
     /* Set the parameter in the parameter library. */
     status = (asynStatus)setStringParam(addr, function, (char *)value);
@@ -1521,19 +723,12 @@ extern "C" {static asynStatus readInt8Array(void *drvPvt, asynUser *pasynUser, e
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->readInt8Array(pasynUser, value, nElements, nIn);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);
 }}
 
-/** Called when asyn clients call pasynInt8Array->read().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to read.
-  * \param[in] nElements Number of elements to read.
-  * \param[out] nIn Number of elements actually read. */
 asynStatus asynPortDriver::readInt8Array(asynUser *pasynUser, epicsInt8 *value,
                                 size_t nElements, size_t *nIn)
 {
@@ -1546,29 +741,18 @@ extern "C" {static asynStatus writeInt8Array(void *drvPvt, asynUser *pasynUser, 
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeInt8Array(pasynUser, value, nElements);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynInt8Array->write().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to write.
-  * \param[in] nElements Number of elements to write. */
 asynStatus asynPortDriver::writeInt8Array(asynUser *pasynUser, epicsInt8 *value,
                                 size_t nElements)
 {
     return(writeArray<epicsInt8>(pasynUser, value, nElements));
 }
 
-/** Called by driver to do the callbacks to registered clients on the asynInt8Array interface.
-  * \param[in] value Address of the array.
-  * \param[in] nElements Number of elements in the array.
-  * \param[in] reason A client will be called if reason matches pasynUser->reason registered for that client.
-  * \param[in] addr A client will be called if addr matches the asyn address registered for that client. */
 asynStatus asynPortDriver::doCallbacksInt8Array(epicsInt8 *value,
                                 size_t nElements, int reason, int addr)
 {
@@ -1584,19 +768,12 @@ extern "C" {static asynStatus readInt16Array(void *drvPvt, asynUser *pasynUser, 
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->readInt16Array(pasynUser, value, nElements, nIn);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynInt16Array->read().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to read.
-  * \param[in] nElements Number of elements to read.
-  * \param[out] nIn Number of elements actually read. */
 asynStatus asynPortDriver::readInt16Array(asynUser *pasynUser, epicsInt16 *value,
                                 size_t nElements, size_t *nIn)
 {
@@ -1609,29 +786,18 @@ extern "C" {static asynStatus writeInt16Array(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeInt16Array(pasynUser, value, nElements);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynInt16Array->write().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to write.
-  * \param[in] nElements Number of elements to write. */
 asynStatus asynPortDriver::writeInt16Array(asynUser *pasynUser, epicsInt16 *value,
                                 size_t nElements)
 {
     return(writeArray<epicsInt16>(pasynUser, value, nElements));
 }
 
-/** Called by driver to do the callbacks to registered clients on the asynInt16Array interface.
-  * \param[in] value Address of the array.
-  * \param[in] nElements Number of elements in the array.
-  * \param[in] reason A client will be called if reason matches pasynUser->reason registered for that client.
-  * \param[in] addr A client will be called if addr matches the asyn address registered for that client. */
 asynStatus asynPortDriver::doCallbacksInt16Array(epicsInt16 *value,
                                 size_t nElements, int reason, int addr)
 {
@@ -1645,21 +811,10 @@ extern "C" {static asynStatus readInt32Array(void *drvPvt, asynUser *pasynUser, 
                                 size_t nElements, size_t *nIn)
 {
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
-    asynStatus status;
-     
-    pPvt->lock();
-    status = pPvt->readInt32Array(pasynUser, value, nElements, nIn);
-    pPvt->unlock();
-    return(status);
+    
+    return(pPvt->readInt32Array(pasynUser, value, nElements, nIn));
 }}
 
-/** Called when asyn clients call pasynInt32Array->read().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to read.
-  * \param[in] nElements Number of elements to read.
-  * \param[out] nIn Number of elements actually read. */
 asynStatus asynPortDriver::readInt32Array(asynUser *pasynUser, epicsInt32 *value,
                                 size_t nElements, size_t *nIn)
 {
@@ -1672,29 +827,18 @@ extern "C" {static asynStatus writeInt32Array(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeInt32Array(pasynUser, value, nElements);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynInt32Array->write().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to write.
-  * \param[in] nElements Number of elements to write. */
 asynStatus asynPortDriver::writeInt32Array(asynUser *pasynUser, epicsInt32 *value,
                                 size_t nElements)
 {
     return(writeArray<epicsInt32>(pasynUser, value, nElements));
 }
 
-/** Called by driver to do the callbacks to registered clients on the asynInt32Array interface.
-  * \param[in] value Address of the array.
-  * \param[in] nElements Number of elements in the array.
-  * \param[in] reason A client will be called if reason matches pasynUser->reason registered for that client.
-  * \param[in] addr A client will be called if addr matches the asyn address registered for that client. */
 asynStatus asynPortDriver::doCallbacksInt32Array(epicsInt32 *value,
                                 size_t nElements, int reason, int addr)
 {
@@ -1710,19 +854,12 @@ extern "C" {static asynStatus readFloat32Array(void *drvPvt, asynUser *pasynUser
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->readFloat32Array(pasynUser, value, nElements, nIn);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynFloat32Array->read().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to read.
-  * \param[in] nElements Number of elements to read.
-  * \param[out] nIn Number of elements actually read. */
 asynStatus asynPortDriver::readFloat32Array(asynUser *pasynUser, epicsFloat32 *value,
                                 size_t nElements, size_t *nIn)
 {
@@ -1735,29 +872,18 @@ extern "C" {static asynStatus writeFloat32Array(void *drvPvt, asynUser *pasynUse
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeFloat32Array(pasynUser, value, nElements);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynFloat32Array->write().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to write.
-  * \param[in] nElements Number of elements to write. */
 asynStatus asynPortDriver::writeFloat32Array(asynUser *pasynUser, epicsFloat32 *value,
                                 size_t nElements)
 {
     return(writeArray<epicsFloat32>(pasynUser, value, nElements));
 }
 
-/** Called by driver to do the callbacks to registered clients on the asynFloat32Array interface.
-  * \param[in] value Address of the array.
-  * \param[in] nElements Number of elements in the array.
-  * \param[in] reason A client will be called if reason matches pasynUser->reason registered for that client.
-  * \param[in] addr A client will be called if addr matches the asyn address registered for that client. */
 asynStatus asynPortDriver::doCallbacksFloat32Array(epicsFloat32 *value,
                                 size_t nElements, int reason, int addr)
 {
@@ -1773,19 +899,12 @@ extern "C" {static asynStatus readFloat64Array(void *drvPvt, asynUser *pasynUser
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->readFloat64Array(pasynUser, value, nElements, nIn);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynFloat64Array->read().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to read.
-  * \param[in] nElements Number of elements to read.
-  * \param[out] nIn Number of elements actually read. */
 asynStatus asynPortDriver::readFloat64Array(asynUser *pasynUser, epicsFloat64 *value,
                                 size_t nElements, size_t *nIn)
 {
@@ -1798,29 +917,18 @@ extern "C" {static asynStatus writeFloat64Array(void *drvPvt, asynUser *pasynUse
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeFloat64Array(pasynUser, value, nElements);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynFloat64Array->write().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] value Pointer to the array to write.
-  * \param[in] nElements Number of elements to write. */
 asynStatus asynPortDriver::writeFloat64Array(asynUser *pasynUser, epicsFloat64 *value,
                                 size_t nElements)
 {
     return(writeArray<epicsFloat64>(pasynUser, value, nElements));
 }
 
-/** Called by driver to do the callbacks to registered clients on the asynFloat64Array interface.
-  * \param[in] value Address of the array.
-  * \param[in] nElements Number of elements in the array.
-  * \param[in] reason A client will be called if reason matches pasynUser->reason registered for that client.
-  * \param[in] addr A client will be called if addr matches the asyn address registered for that client. */
 asynStatus asynPortDriver::doCallbacksFloat64Array(epicsFloat64 *value,
                                 size_t nElements, int reason, int addr)
 {
@@ -1834,17 +942,12 @@ extern "C" {static asynStatus readGenericPointer(void *drvPvt, asynUser *pasynUs
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status =pPvt->readGenericPointer(pasynUser, genericPointer);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynGenericPointer->read().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] genericPointer Pointer to the object to read. */
 asynStatus asynPortDriver::readGenericPointer(asynUser *pasynUser, void *genericPointer)
 {
     epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
@@ -1857,17 +960,12 @@ extern "C" {static asynStatus writeGenericPointer(void *drvPvt, asynUser *pasynU
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->writeGenericPointer(pasynUser, genericPointer);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called when asyn clients call pasynGenericPointer->write().
-  * The base class implementation simply prints an error message.  
-  * Derived classes may reimplement this function if required.
-  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
-  * \param[in] genericPointer Pointer to the object to write. */
 asynStatus asynPortDriver::writeGenericPointer(asynUser *pasynUser, void *genericPointer)
 {
     epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
@@ -1876,10 +974,6 @@ asynStatus asynPortDriver::writeGenericPointer(asynUser *pasynUser, void *generi
 }
 
 
-/** Called by driver to do the callbacks to registered clients on the asynGenericPointer interface.
-  * \param[in] genericPointer Pointer to the object
-  * \param[in] reason A client will be called if reason matches pasynUser->reason registered for that client.
-  * \param[in] address A client will be called if address matches the address registered for that client. */
 asynStatus asynPortDriver::doCallbacksGenericPointer(void *genericPointer, int reason, int address)
 {
     ELLLIST *pclientList;
@@ -1907,6 +1001,19 @@ asynStatus asynPortDriver::doCallbacksGenericPointer(void *genericPointer, int r
 
 
 
+asynStatus asynPortDriver::findParam(asynParamString_t *paramTable, int numParams, 
+                                    const char *paramName, int *param)
+{
+    int i;
+    for (i=0; i < numParams; i++) {
+        if (epicsStrCaseCmp(paramName, paramTable[i].paramString) == 0) {
+            *param = paramTable[i].param;
+            return(asynSuccess);
+        }
+    }
+    return(asynError);
+}
+
 /* asynDrvUser interface methods */
 extern "C" {static asynStatus drvUserCreate(void *drvPvt, asynUser *pasynUser,
                                  const char *drvInfo, 
@@ -1915,42 +1022,25 @@ extern "C" {static asynStatus drvUserCreate(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->drvUserCreate(pasynUser, drvInfo, pptypeName, psize);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Called by asynManager to pass a pasynUser structure and drvInfo string to the driver; 
-  * Assigns pasynUser->reason based on the value of the drvInfo string.
-  * This base class implementation looks up the drvInfo string in the parameter list.
-  * \param[in] pasynUser pasynUser structure that driver will modify
-  * \param[in] drvInfo String containing information about what driver function is being referenced
-  * \param[out] pptypeName Location in which driver can write information.
-  * \param[out] psize Location where driver can write information about size of pptypeName */
 asynStatus asynPortDriver::drvUserCreate(asynUser *pasynUser,
                                        const char *drvInfo, 
                                        const char **pptypeName, size_t *psize)
 {
     const char *functionName = "drvUserCreate";
-    asynStatus status;
-    int index;
-    int addr;
     
-    status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
-    status = this->findParam(addr, drvInfo, &index);
-    if (status) {
-        asynPrint(pasynUser, ASYN_TRACE_ERROR,
-                  "%s:%s: addr=%d, cannot find parameter %s\n", 
-                  driverName, functionName, addr, drvInfo);
-        return(status);
-    }
-    pasynUser->reason = index;
     asynPrint(pasynUser, ASYN_TRACE_FLOW,
-              "%s:%s: drvInfo=%s, index=%d\n", 
-              driverName, functionName, drvInfo, index);
+              "%s:%s: entered", driverName, functionName);
+
     return(asynSuccess);
+
 }
+
     
 extern "C" {static asynStatus drvUserGetType(void *drvPvt, asynUser *pasynUser,
                                  const char **pptypeName, size_t *psize)
@@ -1958,19 +1048,12 @@ extern "C" {static asynStatus drvUserGetType(void *drvPvt, asynUser *pasynUser,
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->drvUserGetType(pasynUser, pptypeName, psize);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Returns strings associated with driver-specific commands.
-  * This base class implementation does nothing.
-  * Derived classes could reimplement this function to return the requested information, but most
-  * do not reimplement this.
-  * \param[in] pasynUser pasynUser structure that driver will modify
-  * \param[out] pptypeName Location in which driver can write information.
-  * \param[out] psize Location where driver can write information about size of pptypeName */
 asynStatus asynPortDriver::drvUserGetType(asynUser *pasynUser,
                                         const char **pptypeName, size_t *psize)
 {
@@ -1990,16 +1073,12 @@ extern "C" {static asynStatus drvUserDestroy(void *drvPvt, asynUser *pasynUser)
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->drvUserDestroy(pasynUser);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Frees any resources allocated by drvUserCreate.
-  * This base class implementation does nothing.
-  * Derived classes could reimplement this function if they allocate any resources in drvUserCreate,
-  * but asynPortDriver classes typically do not need to do so. */
 asynStatus asynPortDriver::drvUserDestroy(asynUser *pasynUser)
 {
     const char *functionName = "drvUserDestroy";
@@ -2018,32 +1097,21 @@ extern "C" {static void report(void *drvPvt, FILE *fp, int details)
 {
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     pPvt->report(fp, details);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
 }}
 
 
-/** Reports on status of the driver
-  * \param[in] fp The file pointer on which report information will be written
-  * \param[in] details The level of report detail desired
-  *
-  * If details > 1 then information is printed about the contents of the parameter library.
-  * If details > 2 then information is printed about all of the interrupt callbacks registered.
-  * Derived classes typically reimplement this function to print driver-specific details and then
-  * call this base class function. */
 void asynPortDriver::report(FILE *fp, int details)
 {
+    int addr;
     asynStandardInterfaces *pInterfaces = &this->asynStdInterfaces;
 
     fprintf(fp, "Port: %s\n", this->portName);
-    if (details > 1) {
-        this->reportParams(fp, details);
-    }
-    if (details >= 2) {
+    if (details >= 1) {
         /* Report interrupt clients */
         reportInterrupt<asynInt32Interrupt>         (fp, pInterfaces->int32InterruptPvt,        "int32");
-        reportInterrupt<asynUInt32DigitalInterrupt> (fp, pInterfaces->uInt32DigitalInterruptPvt,"uint32");
         reportInterrupt<asynFloat64Interrupt>       (fp, pInterfaces->float64InterruptPvt,      "float64");
         reportInterrupt<asynOctetInterrupt>         (fp, pInterfaces->octetInterruptPvt,        "octet");
         reportInterrupt<asynInt8ArrayInterrupt>     (fp, pInterfaces->int8ArrayInterruptPvt,    "int8Array");
@@ -2053,6 +1121,11 @@ void asynPortDriver::report(FILE *fp, int details)
         reportInterrupt<asynFloat64ArrayInterrupt>  (fp, pInterfaces->float64ArrayInterruptPvt, "float64Array");
         reportInterrupt<asynGenericPointerInterrupt>(fp, pInterfaces->genericPointerInterruptPvt, "genericPointer");
     }
+    if (details > 5) {
+        for (addr=0; addr<this->maxAddr; addr++) {
+            this->params[addr]->report();
+        }
+    }
 }
 
 extern "C" {static asynStatus connect(void *drvPvt, asynUser *pasynUser)
@@ -2060,16 +1133,12 @@ extern "C" {static asynStatus connect(void *drvPvt, asynUser *pasynUser)
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->connect(pasynUser);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Connects driver to device; 
-  * the base class implementation simply calls pasynManager->exceptionConnect.
-  * Derived classes can reimplement this function for real connection management.
-  * \param[in] pasynUser The pasynUser structure which contains information about the port and address */
 asynStatus asynPortDriver::connect(asynUser *pasynUser)
 {
     const char *functionName = "connect";
@@ -2087,16 +1156,12 @@ extern "C" {static asynStatus disconnect(void *drvPvt, asynUser *pasynUser)
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
     
-    pPvt->lock();
+    epicsMutexLock(pPvt->mutexId);
     status = pPvt->disconnect(pasynUser);
-    pPvt->unlock();
+    epicsMutexUnlock(pPvt->mutexId);
     return(status);    
 }}
 
-/** Disconnects driver from device; 
-  * the base class implementation simply calls pasynManager->exceptionDisconnect.
-  * Derived classes can reimplement this function for real connection management.
-  * \param[in] pasynUser The pasynUser structure which contains information about the port and address */
 asynStatus asynPortDriver::disconnect(asynUser *pasynUser)
 {
     const char *functionName = "disconnect";
@@ -2120,14 +1185,6 @@ static asynInt32 ifaceInt32 = {
     writeInt32,
     readInt32,
     getBounds
-};
-
-static asynUInt32Digital ifaceUInt32Digital = {
-    writeUInt32Digital,
-    readUInt32Digital,
-    setInterruptUInt32Digital,
-    clearInterruptUInt32Digital,
-    getInterruptUInt32Digital
 };
 
 static asynFloat64 ifaceFloat64 = {
@@ -2177,29 +1234,9 @@ static asynDrvUser ifaceDrvUser = {
 };
 
 
+/* Constructor */
 
-/** Constructor for the asynPortDriver class.
-  * \param[in] portName The name of the asyn port driver to be created.
-  * \param[in] maxAddr The maximum  number of asyn addr addresses this driver supports.
-               Often it is 1 (which is the minimum), but some drivers, for example a 
-			   16-channel D/A or A/D would support values &gt; 1. 
-			   This controls the number of parameter tables that are created.
-  * \param[in] paramTableSize The number of parameters that this driver supports.
-               This controls the size of the parameter tables.
-  * \param[in] interfaceMask Bit mask defining the asyn interfaces that this driver supports.
-                The bit mask values are defined in asynPortDriver.h, e.g. asynInt32Mask.
-  * \param[in] interruptMask Bit mask definining the asyn interfaces that can generate interrupts (callbacks).
-               The bit mask values are defined in asynPortDriver.h, e.g. asynInt8ArrayMask.
-  * \param[in] asynFlags Flags when creating the asyn port driver; includes ASYN_CANBLOCK and ASYN_MULTIDEVICE.
-  * \param[in] autoConnect The autoConnect flag for the asyn port driver. 
-               1 if the driver should autoconnect.
-  * \param[in] priority The thread priority for the asyn port driver thread if ASYN_CANBLOCK is set in asynFlags.
-               If it is 0 then the default value of epicsThreadPriorityMedium will be assigned by asynManager.
-  * \param[in] stackSize The stack size for the asyn port driver thread if ASYN_CANBLOCK is set in asynFlags.
-               If it is 0 then the default value of epicsThreadGetStackSize(epicsThreadStackMedium)
-               will be assigned by asynManager.
-  */
-asynPortDriver::asynPortDriver(const char *portName, int maxAddr, int paramTableSize, int interfaceMask, int interruptMask,
+asynPortDriver::asynPortDriver(const char *portNameIn, int maxAddrIn, int paramTableSize, int interfaceMask, int interruptMask,
                                int asynFlags, int autoConnect, int priority, int stackSize)
 {
     asynStatus status;
@@ -2211,18 +1248,8 @@ asynPortDriver::asynPortDriver(const char *portName, int maxAddr, int paramTable
     pInterfaces = &this->asynStdInterfaces;
     memset(pInterfaces, 0, sizeof(asynStdInterfaces));
        
-    this->portName = epicsStrDup(portName);
-    if (maxAddr < 1) maxAddr = 1;
-    this->maxAddr = maxAddr;
-    interfaceMask |= asynCommonMask;  /* Always need the asynCommon interface */
-
-    /* Create the epicsMutex for locking access to data structures from other threads */
-    this->mutexId = epicsMutexCreate();
-    if (!this->mutexId) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s::%s epicsMutexCreate failure\n", driverName, functionName);
-        return;
-    }
+    this->portName = epicsStrDup(portNameIn);
+    this->maxAddr = maxAddrIn;
 
     status = pasynManager->registerPort(portName,
                                         asynFlags,    /* multidevice and canblock flags */
@@ -2235,21 +1262,12 @@ asynPortDriver::asynPortDriver(const char *portName, int maxAddr, int paramTable
 
     /* Create asynUser for debugging and for standardInterfacesBase */
     this->pasynUserSelf = pasynManager->createAsynUser(0, 0);
-    
-    /* The following asynPrint will be governed by the global trace mask since asynUser is not yet connected to port */
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
-        "%s:%s: creating port %s maxAddr=%d, paramTableSize=%d\n"
-        "    interfaceMask=0x%X, interruptMask=0x%X\n"
-        "    asynFlags=0x%X, autoConnect=%d, priority=%d, stackSize=%d\n",
-        driverName, functionName, this->portName, this->maxAddr, paramTableSize, 
-        interfaceMask, interruptMask, 
-        asynFlags, autoConnect, priority, stackSize);
 
+    interfaceMask |= asynCommonMask;  /* Always need the asynCommon interface */
      /* Set addresses of asyn interfaces */
     if (interfaceMask & asynCommonMask)         pInterfaces->common.pinterface        = (void *)&ifaceCommon;
     if (interfaceMask & asynDrvUserMask)        pInterfaces->drvUser.pinterface       = (void *)&ifaceDrvUser;
     if (interfaceMask & asynInt32Mask)          pInterfaces->int32.pinterface         = (void *)&ifaceInt32;
-    if (interfaceMask & asynUInt32DigitalMask)  pInterfaces->uInt32Digital.pinterface = (void *)&ifaceUInt32Digital;
     if (interfaceMask & asynFloat64Mask)        pInterfaces->float64.pinterface       = (void *)&ifaceFloat64;
     if (interfaceMask & asynOctetMask)          pInterfaces->octet.pinterface         = (void *)&ifaceOctet;
     if (interfaceMask & asynInt8ArrayMask)      pInterfaces->int8Array.pinterface     = (void *)&ifaceInt8Array;
@@ -2260,23 +1278,28 @@ asynPortDriver::asynPortDriver(const char *portName, int maxAddr, int paramTable
     if (interfaceMask & asynGenericPointerMask) pInterfaces->genericPointer.pinterface= (void *)&ifaceGenericPointer;
 
     /* Define which interfaces can generate interrupts */
-    if (interruptMask & asynInt32Mask)          pInterfaces->int32CanInterrupt          = 1;
-    if (interruptMask & asynUInt32DigitalMask)  pInterfaces->uInt32DigitalCanInterrupt  = 1;
-    if (interruptMask & asynFloat64Mask)        pInterfaces->float64CanInterrupt        = 1;
-    if (interruptMask & asynOctetMask)          pInterfaces->octetCanInterrupt          = 1;
-    if (interruptMask & asynInt8ArrayMask)      pInterfaces->int8ArrayCanInterrupt      = 1;
-    if (interruptMask & asynInt16ArrayMask)     pInterfaces->int16ArrayCanInterrupt     = 1;
-    if (interruptMask & asynInt32ArrayMask)     pInterfaces->int32ArrayCanInterrupt     = 1;
-    if (interruptMask & asynFloat32ArrayMask)   pInterfaces->float32ArrayCanInterrupt   = 1;
-    if (interruptMask & asynFloat64ArrayMask)   pInterfaces->float64ArrayCanInterrupt   = 1;
-    if (interruptMask & asynGenericPointerMask) pInterfaces->genericPointerCanInterrupt = 1;
+    if (interruptMask & asynInt32Mask)          pInterfaces->int32CanInterrupt        = 1;
+    if (interruptMask & asynFloat64Mask)        pInterfaces->float64CanInterrupt      = 1;
+    if (interruptMask & asynOctetMask)          pInterfaces->octetCanInterrupt        = 1;
+    if (interruptMask & asynInt8ArrayMask)      pInterfaces->int8ArrayCanInterrupt    = 1;
+    if (interruptMask & asynInt16ArrayMask)     pInterfaces->int16ArrayCanInterrupt   = 1;
+    if (interruptMask & asynInt32ArrayMask)     pInterfaces->int32ArrayCanInterrupt   = 1;
+    if (interruptMask & asynFloat32ArrayMask)   pInterfaces->float32ArrayCanInterrupt = 1;
+    if (interruptMask & asynFloat64ArrayMask)   pInterfaces->float64ArrayCanInterrupt = 1;
+    if (interruptMask & asynGenericPointerMask) pInterfaces->genericPointerCanInterrupt       = 1;
 
     status = pasynStandardInterfacesBase->initialize(portName, pInterfaces,
                                                      this->pasynUserSelf, this);
     if (status != asynSuccess) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s ERROR: Can't register interfaces: %s.\n",
-            driverName, functionName, this->pasynUserSelf->errorMessage);
+        printf("%s:%s ERROR: Can't register interfaces: %s.\n",
+               driverName, functionName, this->pasynUserSelf->errorMessage);
+        return;
+    }
+
+    /* Create the epicsMutex for locking access to data structures from other threads */
+    this->mutexId = epicsMutexCreate();
+    if (!this->mutexId) {
+        printf("%s::%s epicsMutexCreate failure\n", driverName, functionName);
         return;
     }
 
@@ -2284,36 +1307,23 @@ asynPortDriver::asynPortDriver(const char *portName, int maxAddr, int paramTable
     this->params = (paramList **) calloc(maxAddr, sizeof(paramList *));    
     /* Initialize the parameter library */
     for (addr=0; addr<maxAddr; addr++) {
-        this->params[addr] = new paramList(paramTableSize, &this->asynStdInterfaces);
+        this->params[addr] = new paramList(0, paramTableSize, &this->asynStdInterfaces);
     }
 
     /* Connect to our device for asynTrace */
     status = pasynManager->connectDevice(this->pasynUserSelf, portName, 0);
     if (status != asynSuccess) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s:, connectDevice failed\n", driverName, functionName);
-        return;
-    }
-
-    /* Create a thread that waits for interruptAccept and then does all the callbacks once. */
-    status = (asynStatus)(epicsThreadCreate("asynPortDriverCallback",
-                                epicsThreadPriorityMedium,
-                                epicsThreadGetStackSize(epicsThreadStackMedium),
-                                (EPICSTHREADFUNC)callbackTaskC,
-                                this) == NULL);
-    if (status) {
-        printf("%s:%s epicsThreadCreate failure for callback task\n", 
-            driverName, functionName);
+        printf("%s:%s:, connectDevice failed\n", driverName, functionName);
         return;
     }
 
 }
 
-/** Destructor for asynPortDriver class; frees resources allocated when port driver is created. */
 asynPortDriver::~asynPortDriver()
 {
     int addr;
 
+    /* This is the destructor */
     epicsMutexDestroy(this->mutexId);
     for (addr=0; addr<this->maxAddr; addr++) {
         delete this->params[addr];

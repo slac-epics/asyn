@@ -1,11 +1,11 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <title>asynDriver: Asynchronous Driver Support - Release Notes</title>
-  <meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type" />
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
 </head>
-<body xml:lang="en">
+<body>
   <div style="text-align: center">
     <h1>
       asynDriver: Asynchronous Driver Support - Release Notes</h1>
@@ -13,339 +13,16 @@
   <hr />
   <div style="text-align: center">
     <h2>
-      Release 4-16</h2>
-    <h2>
-      January 17, 2011</h2>
-  </div>
-  <h3>
-    drvAsynIPPort</h3>
-  <p>
-    Support has been added for terminal servers which support the TELNET RFC 2217`protocol.
-    To communicate with such devices specify "COM" as the protocol in the drvAsynIPPortConfigure
-    command. This allows port parameters (speed, parity, etc.) to be set using an asynRecord
-    or asynSetOption commands just as for local serial ports.</p>
-  <h3>
-    drvVxi11</h3>
-  <p>
-    Fix from Benjamin Franksen to fix problem with reconnection.</p>
-  <p>
-    The 'timeout' argument to vxi11Configure has been changed from double to string.
-    This allows vxi11Configure to be called directly from the vxWorks shell.</p>
-  <div style="text-align: center">
-    <h2>
-      Release 4-15</h2>
-    <h2>
-      December 8, 2010</h2>
-  </div>
-  <h3>
-    vxi11</h3>
-  <p>
-    The third argument to the vxi11Configure command is now a bit-map. The least significant
-    bit (value 0x1) remains the 'recover with IFC' control. The next-to-least significant
-    bit (value 0x2) when set will cause all devices to be locked when a connection is
-    made. This allows for cooperative exclusive access to devices.</p>
-  <h3>
-    asynManager</h3>
-  <p>
-    Fixed memory leak in lockPort() when an error occured, was not calling freeAsynUser().
-    Thanks to Andrew Starritt for finding this.</p>
-  <h3>
-    devEpics</h3>
-  <p>
-    Bug fix for devAsynInt32 and devAsynFloat64: it was not freeing the mutex in processAiAverage
-    if numAverage==0, i.e. there had been no callbacks from the driver since the record
-    last processed. This would hang the next thread that tried to take the mutex, typically
-    the driver callback thread.</p>
-  <p>
-    Bug fix for devAsynXXXArray: it was calling drvUserCreate in the port driver even
-    if there was no userParam in the link, which could crash the driver.</p>
-  <h3>
-    Many files</h3>
-  <p>
-    Changes to allow building dynamically on WIN32 (i.e. making DLLs).</p>
-  <h3>
-    Makefiles</h3>
-  <p>
-    Changes to allow building on Cygwin 1.7.x or 1.5.x; replaced rpc with $(CYGWIN_RPC_LIB),
-    which allows it to link with rpc on 1.5.x and tirpc on 1.7.x. You need to add one
-    of the following 2 lines to <code>base/configure/os/CONFIG_SITE.cygwin-x86.cygwin-x86</code></p>
-  <pre>
-    For Cygwin 1.7.x:
-    CYGWIN_RPC_LIB = tirpc
-
-    For Cygwin 1.5.x
-    CYGWIN_RPC_LIB = rpc
-  </pre>
-  <div style="text-align: center">
-    <h2>
-      Release 4-14</h2>
-    <h2>
-      July 29, 2010</h2>
-  </div>
-  <h3>
-    asynDriver</h3>
-  <p>
-    Fixed bugs in connection management. Releases 4-11 through 4-13 had the following
-    problems:</p>
-  <ul>
-    <li>If a port was multi-device and auto-connect, and was only accessed using SyncIO
-      calls, then asynManager would never connect to the devices. If regular queued requests
-      were used, which happens if an asyn record is connected to that port and device,
-      then it would connect once the first queue request was done.</li>
-    <li>For all auto-connect ports there was a race condition, such that the port might
-      or might not be connected when the first queued request or SyncIO call was done
-      on that port. This arose because when the port registered its asynCommon interface,
-      asynManager queued a connection request on that port. But if that connection request
-      callback, which executes in the portThread, had not yet occurred when a queue request
-      or SyncIO call was made, then those operations would be rejected because the port
-      was not yet connected.</li>
-  </ul>
-  <p>
-    These problems were fixed by doing the following:</p>
-  <ul>
-    <li>When the port registers its asynCommon interface and asynManager queues the connection
-      request, it now waits for a short time for the connection callback to complete.
-      The default time is 0.5 seconds, but this time can be changed with a call to the
-      new function pasynManager-&gt;setAutoConnectTimeout(double timeout). This function
-      can be accessed from the iocsh shell with the new asynSetAutoConnectTimeout(double
-      timeout) command. This short timeout is designed to allow devices time to connect
-      if they are available, but not to excessively slow down booting of the IOC by waiting,
-      for example, for the system timeout on TCP connections. Note that this change means
-      that it is now very likely that the pasynCommon-&gt;connect() call will occur as
-      soon as the asynCommon interface is registered. As noted in the R4-12 release notes,
-      this means that the driver must have already done all initialization required for
-      the asynCommon-&gt;connect() callback before it registers the asynCommon interface!</li>
-    <li>There is an additional new function, pasynManager-&gt;waitConnect(asynUser *pasynUser,
-      double timeout), which will wait for the for the port to connect, up to the specified
-      timeout. This function can be called from the iocsh with the new command asynWaitConnect(const
-      char *portName, double timeout). This function makes it possible to wait longer
-      for a port to connect then the current value of the global autoconnect timeout described
-      above.</li>
-  </ul>
-  <p>
-    Fixed problems with the SyncIO calls, which were caused by the implementation of
-    pasynManager-&gt;lockPort():</p>
-  <ul>
-    <li>The SyncIO calls (e.g. asynOctetSyncIO) are implemented by calling pasynManager-&gt;lockPort(),
-      executing the I/O in the current thread, and then calling pasynManager-&gt;unlockPort().
-      These SyncIO functions are designed to be called from threads that are allowed to
-      block, such as SNL programs, or other drivers. The problem with the previous implementation
-      was that pasynManager-&gt;lockPort() immediately took the port mutex when it was
-      available, rather than queueing a request to take the mutex. This could lead to
-      one thread effectively getting exclusive access to the port, even if other threads
-      had queued requests or tried to do SyncIO calls themselves. For example, if a device
-      could send unsolicited input, then one might create a thread that simply called
-      pasynOctetSyncIO-&gt;read() with a short timeout in a tight loop. The problem with
-      this was that as soon as that thread released the port mutex when the read timed
-      out, it would take the mutex again, blocking other threads that were trying to access
-      the port.&nbsp; Previously the only solution to this problem was to add a short
-      epicsThreadSleep() in the read loop.</li>
-    <li>This problem has been fixed by reimplementing pasynManager-&gt;lockPort(), which
-      now queues a request to access the port and then blocks until the queue request
-      callback runs in the portThread. When the queue request runs, the thread that called
-      pasynManager-&gt;lockPort() executes, and the portThread blocks, until pasynManager-&gt;unlockPort()
-      is called.</li>
-    <li>Note that this change to lockPort() does change its functionality in one respect:
-      previously it was OK to call lockPort() on a port that was not connected. This is
-      no longer possible, because the queueRequest call in lockPort will now return an
-      error if the port is not connected.</li>
-    <li>The change to lockPort did not require any changes to the asynXXXSyncIO functions
-      except asynCommonSyncIO. The asynCommonSyncIO-&gt;connectDevice and asynCommonSyncIO-&gt;connectDevice
-      calls cannot use lockPort() any more, because as noted above it does not work with
-      disconnected ports. Rather, these functions now directly queue a connection request
-      with a private callback function to connect or disconnect the port.</li>
-  </ul>
-  <h3>
-    vxi11</h3>
-  <p>
-    Fixed a bug in driver initialization. The driver had not completed all required
-    initialization before it called pasynGpib-&gt;registerPort. Because pasynGpib-&gt;registerPort
-    registers the asynCommon interface, that now normally triggers an immediate callback
-    to vxiConnect, and the driver was not yet properly initialized to handle that callback.</p>
-  <p>
-    Added an additional example driver, asynPortTest, that uses asynPortDriver. It implements
-    the asynInt32, asynFloat64, and asynOctet interfaces to communicate with the echo
-    server using asynOctetSyncIO calls. This tests nested SyncIO calls. Added a new
-    startup script, database and medm screen for testing this new driver.</p>
-  <h3>
-    devGpib</h3>
-  <p>
-    Added a call to asynOctet-&gt;flush() just before the call to asynOctet-&gt;write()
-    operation when doing write/read operations. This eliminates any stale input that
-    may have already been sent by the device and would otherwise be incorrectly returned
-    by the read operation.</p>
-  <h3>
-    interposeEOS</h3>
-  <p>
-    Now behaves properly even when eomReason is NULL.</p>
-  <h3>
-    testIPServerApp</h3>
-  <p>
-    Changed ipEchoServer2.c to eliminate the epicsThreadSleep(0.01) in the listener
-    thread. This sleep is no longer necessary because of the change to lockPort described
-    above, so the example program was changed to test and demonstrate this.</p>
-  <div style="text-align: center">
-    <h2>
-      Release 4-13-1</h2>
-    <h2>
-      May 20, 2010</h2>
-  </div>
-  <h3>
-    asynPortDriver</h3>
-  <p>
-    Fixed bug in getXXXParam. It was not returning error status when a parameter was
-    undefined. This caused device support to use undefined values for output records,
-    because the initial read from the driver during device support initialization did
-    not return an error it should have.</p>
-  <div style="text-align: center">
-    <h2>
-      Release 4-13</h2>
-    <h2>
-      April 1, 2010</h2>
-  </div>
-  <h3>
-    asyn/Makefile</h3>
-  <p>
-    Change some dependencies to fix parallel (-j) make problem.</p>
-  <h3>
-    drvAsynIPPort</h3>
-  <p>
-    A return of 0 from a read of a TCP stream is treated as an END condition rather
-    than as an error. This makes it easier to handle devices that close the connection
-    at the end of a reply.</p>
-  <p>
-    Support has been added for devices such as web servers that require a connect at
-    the beginning of each transaction. To enable this behaviour, specify "http" as the
-    protocol in the drvAsynIPPortConfigure command and ensure that each transaction
-    ends with a read that detects the broken connection from the device. Note that the
-    device will always appear connected. The connect/disconnect around each transaction
-    is handled within the drvAsynIPPort driver.</p>
-  <h3>
-    drvAsynIPServerPort</h3>
-  <p>
-    Corrected the documentation to state that only the TCP/IP protocol is supported,
-    not UDP.</p>
-  <h3>
-    asynGpib</h3>
-  <p>
-    Fix problem with NULL-pointer dereferences.</p>
-  <h3>
-    drvVxi11</h3>
-  <p>
-    Bug fix from Benjamin Franksen for devices that don't support IRQ.
-  </p>
-  <h3>
-    devEPICS</h3>
-  <p>
-    The ring buffer code in devAsynFloat64.c, devAsynInt32.c and devAsynUInt32Digital.c
-    has been improved. Previously when ring buffer overflow occurred during a callback
-    the new value was simply discarded. This meant that when the record processed at
-    the end of a rapid burst of callbacks it would not contain the most recent value.
-    Now when overflow occurs the oldest value is removed from from the ring buffer and
-    the new value is added, so that the record will contain the most recent callback
-    value after a burst.</p>
-  <p>
-    asynUInt32Digital: asynMask values implying shifts greater than 16 bits are now
-    supported.</p>
-  <h3>
-    asynRecord</h3>
-  <p>
-    Fixed bug which caused an error when writing or reading in binary format if the
-    driver did not implement the get(Input/Output)Eos functions. This bug was introduced
-    when readRaw and writeRaw were removed from asynOctet in release 4-10.
-  </p>
-  <h3>
-    Additional makeSupport.pl template</h3>
-  <p>
-    makeSupport.pl -t streamSCPI &lt;name&gt; creates skeleton stream protocol and database
-    files for a SCPI (IEEE-488.2) device.</p>
-  <h3>
-    asynPortDriver</h3>
-  <p>
-    Fixed bug in readInt32Array, not taking lock where needed.</p>
-  <p>
-    Added drvInfo strings to parameter lists, and new methods to support this: createParam(),
-    findParam(), getParamName(). The report functions now print out the drvInfo strings,
-    which is very useful. The base class drvUserCreate() method can now be used without
-    reimplementing in derived classes, because the parameter names are now available
-    to the base class. Removed asynParamString_T and drvUserCreateParam(), which are
-    no longer needed. The testAsynPortDriver test application has been updated to use
-    these new features.</p>
-  <div style="text-align: center">
-    <h2>
-      Release 4-12</h2>
-    <h2>
-      August 19, 2009</h2>
-  </div>
-  <h3>
-    asynManager</h3>
-  <p>
-    A problem was introduced in R4-11 by not starting the autoconnect process until
-    iocInit(), and operations that do not use the XXXSyncIO functions thus fail before
-    iocInit(). This means, for example, that calls to asynSetOption() to set serial
-    port parameters fail if done in a startup script before iocInit(). R4-12 fixes this
-    problem by decoupling autoconnect operations from iocInit(). NOTE: The first call
-    to the pasynCommon-&gt;connect() function now happens almost immediately after pasynManager-&gt;registerInterface()
-    is called for the asynCommon interface. This timing is different from all previous
-    asyn releases, and it means that port drivers must initialize everything required
-    by asynCommon-&gt;connect() before they register the asynCommon interface. This
-    may require minor re-ordering of the initialization sequence in some drivers.</p>
-  <h3>
-    drvAsynSerialPort</h3>
-  <p>
-    Requests to set end-of-string values or serial port parameters are accepted even
-    when the port is not connected. The request takes effect when the port is connected.
-    This makes IOC startup more robust in the face of network or USB to serial adapters
-    that may be unavailable on startup.</p>
-  <h3>
-    asynInt32Average, asynFloat64Average</h3>
-  <p>
-    If record is processed before new data have arrived (numAverage==0) set record to
-    UDF/INVALID, set UDF to TRUE and leave value unchanged.</p>
-  <div style="text-align: center">
-    <h2>
       Release 4-11</h2>
-    <h2>
-      June 16, 2009</h2>
   </div>
-  <h3>
-    asynManager</h3>
-  <p>
-    asynReport at detail level 0 now reports only disconnected subaddresses.</p>
-  <p>
-    The autoconnect code has undergone considerable modification. When a port is registered
-    with autoConnect true, or whenever a port disconnect exception is raised on an autoConnect
-    port, an attempt at connection occurs immediately followed by retry attempts at
-    20 second intervals. Attempts to queue requests to a disconnected port (even an
-    autoConnect port) will be rejected. These changes have been made to reduce the occurences
-    of 'connection flurries' and to ensure that requests do not languish in the queue
-    when connections are broken.</p>
-  <p>
-    Setting the trace mask or trace I/O mask for a port now also sets the trace mask
-    or trace I/O mask for every device associated with that port.</p>
-  <p>
-    Passing a NULL pasynUser argument to the setTraceMask and setTraceIOMask will set
-    the asynBase (default) trace mask or trace I/O mask. To do this from the iocsh pass
-    a zero length portName string to the iocsh commands asynSetTraceMask or asynSetTraceIOMask.</p>
-  <h3>
-    asynDriver.h</h3>
-  <p>
-    Add new version macros (ASYN_VERSION, ASYN_REVISION and ASYN_MODIFICATION). These
-    are guaranteed to be numeric.</p>
-  <p>
-    Add new asynStatus codes, <strong>asynDisconnected</strong> and <strong>asynDisabled</strong>.
-    Attempts to queue a request to a disconnected or disabled port return these codes,
-    respectively. Future changes to record support may propogate these to the record
-    alarm status field.</p>
-  <h3>
-    asynInterposeEOS</h3>
-  <p>
-    Increased the size of the input buffer from 600 to 2048 bytes.</p>
+  <h2>
+    xxxx x, 2009</h2>
   <h3>
     VXI-11</h3>
   <p>
     Fix from Takashi Asakawa, Yokogawa Electric Corporation, Japan to allow link identifiers
-    with a value of zero.</p>
+    with a value of zero.
+  </p>
   <h3>
     devEpics (devAsynInt32, devAsynFloat64, devAsynUInt32Digital)</h3>
   <ul>
@@ -358,14 +35,16 @@
   <h3>
     testIPServerApp</h3>
   <p>
-    Add some cleanup code to eliminate memory/socket leaks.</p>
+    Add some cleanup code to eliminate memory/socket leaks.
+  </p>
   <h3>
     asynOctetSyncIO</h3>
   <p>
     The asynOctetSyncIO <strong>openSocket</strong> method will be removed in the next
     release. This method is redundant since it is no different than calling the <strong>
       connect</strong> method with the port name from a previous drvAsynIPPortConfigure
-    command.</p>
+    command.
+  </p>
   <h3>
     asynPortDriver</h3>
   <p>
@@ -473,10 +152,12 @@ if (saveEosLen)
     and asynFloat64. The ring buffer is only created when the record is put into I/O
     Intr scan, so the storage is not allocated for records that are not I/O Intr scanned.
     The ring buffer default size is 10 values, but this can be changed on a per-record
-    basis using the dbInfo string "FIFO" with a value such as "100".</p>
+    basis using the dbInfo string "FIFO" with a value such as "100".
+  </p>
   <p>
     Added support for bi and bo records for asynInt32 interface. Previously these records
-    were only supported for the asynUInt32Digital interface.</p>
+    were only supported for the asynUInt32Digital interface.
+  </p>
   <p>
     Added waveform record device support for the asynInt8Array, asynInt16Array, and
     asynFloat32Array interfaces. These are the same as devAsynInt32Array and devAsynFloat64Array
@@ -553,7 +234,8 @@ if (saveEosLen)
     This allows device support to work with drivers that cannot return meaningful values
     in pasynInt32-&gt;getBounds because they do not know the range of the device. This
     is true, for example of Modbus ADCs. The nbits parameter is defined as follows:</p>
-  <pre>  nbits &gt; 0  Device is unipolar with a range from 0 to 2^nbits-1
+  <pre>
+  nbits &gt; 0  Device is unipolar with a range from 0 to 2^nbits-1
   nbits &lt; 0  Device is bipolar with a range from -2^(abs(nbits)-1) to 2^((abs(nbits)-1)-1
            Values returned on the asynInt32 interface will be sign extended
            using the sign bit (e.g. bit abs(nbits)-1 starting at bit 0).
