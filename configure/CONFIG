@@ -2,6 +2,9 @@
 include $(TOP)/configure/CONFIG_APP
 # Add any changes to make definitions here
 
+SHRLIB_DEPLIB_DIRS	+=	/usr/local/lib
+PROD_DEPLIB_DIRS	+=	/usr/local/lib
+
 #CROSS_COMPILER_TARGET_ARCHS = vxWorks-68040
 
 # Use this when your IOC and the host use different paths
