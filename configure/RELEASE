@@ -1,9 +1,40 @@
-#RELEASE Location of external products
-#  IPAC is only necessary if support for Greensprings IP488 is required
-#  IPAC release V2-7 or later is required.
-IPAC=/corvette/home/epics/devel/ipac/2-9beta
-# SEQ is required for testIPServer
-SNCSEQ=/corvette/home/epics/devel/seq/2-0-11
-#  EPICS_BASE 3.14.6 or later is required
-LINUX_GPIB=NO
-EPICS_BASE=/corvette/usr/local/epics/base-3.14.8.2
+# RELEASE
+# Defines location of external products
+include $(TOP)/RELEASE_SITE
+
+# ===============================================================
+# Define the location and version of EPICS base
+# ===============================================================
+BASE_MODULE_VERSION=R3.14.9-0.3.0
+EPICS_BASE=$(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
+
+#
+# PCDS Note: Compiling with LINUX_GPIB=YES requires that the
+# linux-gpib package be installed.  The most recent version
+# compatible with our 2.6.18 kernel is linux-gpib-3.2.09
+# This version is currently installed on:
+#	psusr117.dev.pcdsn
+#
+#LINUX_GPIB=NO
+
+# ===============================================================
+# Define the version(s) of any other needed modules 
+# ===============================================================
+IPAC_MODULE_VERSION=R2.8.4-1.0.0
+SEQ_MODULE_VERSION=R2.0.11-1.0.0
+
+# ============================================================
+# External Support module path definitions
+#
+# If any of these macros expand to a path which
+# contains an "include" directory, that directory will be
+# included in the compiler include path.
+#
+# If any of these macros expand to a path which
+# contains a "lib/<arch>" directory, that directory will be
+# included in the compiler link path for that architecture.
+#
+# If your build fails, look for these paths in your build output
+# ============================================================
+IPAC=$(EPICS_MODULES)/ipac/$(IPAC_MODULE_VERSION)
+SEQ=$(EPICS_MODULES)/seq/$(SEQ_MODULE_VERSION)
