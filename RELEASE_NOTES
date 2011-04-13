@@ -27,6 +27,11 @@
 # 
 #==============================================================
 #
+asyn-R4-16-lcls2:   Build against ipac version 2.11: ipac-R2-11-lcls1
+
+asyn-R4-16-lcls1:   Update to new asyn version 4-16 from ANL
+                    Build with base-R3-14-8-2-lcls6
+                    and base-R3-14-12
 asyn-R4-9-lcls6:   Build with base-R3-14-8-2-lcls6_p1
                    and base-R3-14-12
 
