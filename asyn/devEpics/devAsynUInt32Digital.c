@@ -331,20 +331,27 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,
     asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
         "%s devAsynUInt32Digital::interruptCallbackInput new value=%lu\n",
         pr->name, value);
-    count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
-    if (count != size) {
-        epicsMutexLock(pPvt->mutexId);
-        pPvt->ringBufferOverflows++;
-        epicsMutexUnlock(pPvt->mutexId);
-    }
     /* There is a problem.  A driver could be calling us with a value after
      * this record has registered for callbacks but before EPICS has set interruptAccept,
      * which means that scanIoRequest will return immediately.
-     * This is very bad, because we will have pushed a value into the ring buffer
-     * but it won't get popped off because the record won't process.  The values
+     * This is very bad, because if we have pushed a value into the ring buffer
+     * it won't get popped off because the record won't process.  The values
      * read the next time the record processes would then be stale.
-     * Work around this problem by waiting here for interruptAccept */
-    while (!interruptAccept) epicsThreadSleep(0.1);
+     * We previously worked around this problem by waiting here for interruptAccept.
+     * But that does not work if the callback is coming from the thread that is executing
+     * iocInit, which can happen with synchronous drivers (ASYN_CANBLOCK=0) that do callbacks
+     * when a value is written to them, which can happen in initRecord for an output record.
+     * Instead we just return.  There will then be nothing in the ring buffer, so the first
+     * read will do a read from the driver, which should be OK. */
+    if (!interruptAccept) return;
+    /* Note that we put a lock around epicsRingBytesPut and Get because we potentially have
+     * more than one reader, since the reader is whatever thread is processing the record */
+    epicsMutexLock(pPvt->mutexId);
+    count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
+    if (count != size) {
+        pPvt->ringBufferOverflows++;
+    }
+    epicsMutexUnlock(pPvt->mutexId);
     scanIoRequest(pPvt->ioScanPvt);
 }
 
@@ -358,12 +365,12 @@ static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,
     asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
         "%s devAsynUInt32Digital::interruptCallbackOutput new value=%lu\n",
         pr->name, value);
+    epicsMutexLock(pPvt->mutexId);
     count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
     if (count != size) {
-        epicsMutexLock(pPvt->mutexId);
         pPvt->ringBufferOverflows++;
-        epicsMutexUnlock(pPvt->mutexId);
     }
+    epicsMutexUnlock(pPvt->mutexId);
     scanOnce(pr);
 }
 
@@ -371,8 +378,8 @@ static void getCallbackValue(devPvt *pPvt)
 {
     int count, size=sizeof(epicsUInt32);
 
+    epicsMutexLock(pPvt->mutexId);
     if (pPvt->ringBuffer && (epicsRingBytesUsedBytes(pPvt->ringBuffer) >= size)) {
-        epicsMutexLock(pPvt->mutexId);
         if (pPvt->ringBufferOverflows > 0) {
             asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
                 "%s devAsynUInt32Digital getCallbackValue error, %d ring buffer overflows\n",
@@ -380,14 +387,17 @@ static void getCallbackValue(devPvt *pPvt)
                 pPvt->ringBufferOverflows = 0;
         }
         count = epicsRingBytesGet(pPvt->ringBuffer, (char *)&pPvt->value, size);
-        if (count == size)
+        if (count == size) {
+            asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
+                "%s devAsynUInt32Digital::getCallbackValue from ringBuffer value=%lu\n",pPvt->pr->name,pPvt->value);
             pPvt->gotValue = 1;
+        }
         else 
             asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
                 "%s devAsynUInt32Digital getCallbackValue error, ring read failed\n",
                 pPvt->pr->name);
-        epicsMutexUnlock(pPvt->mutexId);
     }
+    epicsMutexUnlock(pPvt->mutexId);
 }
 
 static int computeShift(epicsUInt32 mask)
@@ -469,11 +479,12 @@ static long processBo(boRecord *pr)
 
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
+        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         pr->rval = pPvt->value & pr->mask;
         pr->val = (pr->rval) ? 1 : 0;
         pr->udf = 0;
     } else if(pr->pact == 0) {
-        pPvt->value = pr->rval; pPvt->gotValue = 1;
+        pPvt->value = pr->rval;;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
@@ -553,9 +564,10 @@ static long processLo(longoutRecord *pr)
 
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
+        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         pr->val = pPvt->value;
     } else if(pr->pact == 0) {
-        pPvt->value = pr->val; pPvt->gotValue = 1;
+        pPvt->value = pr->val;;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
@@ -638,6 +650,7 @@ static long processMbbo(mbboRecord *pr)
 
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
+        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         unsigned long rval = pPvt->value & pr->mask;
 
         pr->rval = rval;
@@ -661,7 +674,7 @@ static long processMbbo(mbboRecord *pr)
         }
         pr->udf = FALSE;
     } else if(pr->pact == 0) {
-        pPvt->gotValue = 0; pPvt->value = pr->rval;
+        pPvt->value = pr->rval;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
@@ -744,6 +757,7 @@ static long processMbboDirect(mbboDirectRecord *pr)
 
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
+        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         epicsUInt32 rval = pPvt->value & pr->mask;
         unsigned char *bit = &(pr->b0);
         int i, offset=1;
@@ -758,7 +772,7 @@ static long processMbboDirect(mbboDirectRecord *pr)
             }
         }
     } else if(pr->pact == 0) {
-        pPvt->gotValue = 0; pPvt->value = pr->rval;
+        pPvt->value = pr->rval;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;

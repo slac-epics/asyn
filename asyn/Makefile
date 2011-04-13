@@ -13,9 +13,17 @@ include $(TOP)/configure/CONFIG
 ASYN = $(TOP)/asyn
 #USR_CFLAGS += -DDEBUG
 
+# The following gets rid of the -fno-implicit-templates flag on vxWorks, 
+# so we get automatic template instantiation.
+# This is what we want for miscellaneous/asynPortDriver.cpp
+ifeq (vxWorks,$(findstring vxWorks, $(T_A)))
+CODE_CXXFLAGS=
+endif
+
 LIBRARY_IOC += asyn
 asyn_LIBS += $(EPICS_BASE_IOC_LIBS)
 asyn_SYS_LIBS_WIN32 = ws2_32
+asyn_SYS_LIBS_cygwin32 = rpc
 
 SRC_DIRS += $(ASYN)/asynDriver
 INC += asynDriver.h
@@ -74,9 +82,11 @@ DBD += asyn.dbd
 INC += asynShellCommands.h
 INC += asynInterposeEos.h
 INC += asynInterposeFlush.h
+INC += asynPortDriver.h
 asyn_SRCS += asynShellCommands.c
 asyn_SRCS += asynInterposeEos.c
 asyn_SRCS += asynInterposeFlush.c
+asyn_SRCS += asynPortDriver.cpp
 
 SRC_DIRS += $(ASYN)/devEpics
 DBD += devAsynOctet.dbd

@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * drvAsynIPPort.c,v 1.53 2008/07/02 21:02:06 norume Exp
+ * drvAsynIPPort.c,v 1.55 2009/03/17 18:11:58 norume Exp
  */
 
 /* Previous versions of drvAsynIPPort.c (1.29 and earlier, asyn R4-5 and earlier)
@@ -61,8 +61,14 @@
 # define USE_SOCKTIMEOUT
 #else
 # define USE_POLL
-# if defined(vxWorks) || defined(_WIN32)
+# if defined(vxWorks)
 #  define FAKE_POLL
+# elif defined(_WIN32)
+#  if defined(POLLIN)
+#   define poll(fd,nfd,t) WSAPoll(fd,nfd,t)
+#  else
+#   define FAKE_POLL
+#  endif
 # else
 #  include <sys/poll.h>
 # endif
@@ -553,12 +559,12 @@ static const struct asynCommon drvAsynIPPortAsynCommon = {
 /*
  * Configure and register an IP socket from a hostInfo string
  */
-int
+epicsShareFunc int
 drvAsynIPPortConfigure(const char *portName,
-                     const char *hostInfo,
-                     unsigned int priority,
-                     int noAutoConnect,
-                     int noProcessEos)
+                       const char *hostInfo,
+                       unsigned int priority,
+                       int noAutoConnect,
+                       int noProcessEos)
 {
     ttyController_t *tty;
     asynInterface *pasynInterface;
