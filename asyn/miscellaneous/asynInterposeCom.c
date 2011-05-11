@@ -2,7 +2,7 @@
  * RFC 2117 support for remote serial ports
  * 
  * Author: W. Eric Norum
- * "$Date: 2011/02/24 16:48:58 $ (UTC)"
+ * "$Date: 2011/01/12 00:13:59 $ (UTC)"
  */
 
 /************************************************************************\
@@ -17,11 +17,8 @@
 
 #include <cantProceed.h>
 #include <epicsStdio.h>
-
-/* Added epicsTypes.h for EPICS R3-14-8-2 */
-#include <epicsTypes.h>
-
 #include <epicsString.h>
+#include <epicsTypes.h>
 
 #include "asynDriver.h"
 #include "asynOctet.h"
@@ -316,10 +313,10 @@ static asynOctet octetMethods = {
  */
 
 /*
- * Tell that server that we WILL do something
- * and verify that it will actually DO it.
- * Or, tell the server to DO something
- * and verify that it WILL.
+ * Two possible actions depending upon the 'command':
+ *    1) Tell that server that we WILL do something and
+ *       verify that it will allow us to DO so.
+ *    2) Tell the server to DO something and verify that it WILL.
  */
 static asynStatus
 willdo(interposePvt *pinterposePvt, asynUser *pasynUser, int command, int code)
