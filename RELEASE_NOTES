@@ -14,11 +14,45 @@
 #  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
 #--------------------------------------------------------------
 #  Mod:
-#         05-Dev-2008, K. Luchini        (LUCHINI):
+#         19-Mar-2010, S. Hoobler        (SONYA):
+#            add asyn-R4-9-lcls5
+#         22-Feb-2010, K. Luchini        (LUCHINI):
+#            add asyn-R4-9-lcls4
+#         27-Apr-2009, K. Luchini        (LUCHINI):
+#            add asyn-R4-9-lcls3
+#         05-Dec-2008, K. Luchini        (LUCHINI):
 #            add asyn-R4-7-1-lcls5
+#         10-Apr-2008, S. Schuh          (SCHUHS):
+#            add asyn-R4-9, asyn-R4-9-lcls1, and asyn-R4-9-lcls2
 # 
 #==============================================================
 #
+asyn-R4-16-lcls2:   Build against ipac version 2.11: ipac-R2-11-lcls1
+
+asyn-R4-16-lcls1:   Update to new asyn version 4-16 from ANL
+                    Build with base-R3-14-8-2-lcls6
+                    and base-R3-14-12
+asyn-R4-9-lcls6:   Build with base-R3-14-8-2-lcls6_p1
+                   and base-R3-14-12
+
+asyn-R4-9-lcls5:   Build with base-R3-14-8-2-lcls6 and rtems 4.9.4
+
+asyn-R4-9-lcls4:   Build with base-R3-14-8-2 and rtems 4.9.3
+
+asyn-R4-9-lcls3:   Build with base-R3-14-8-2 and rtems 4.9.1
+
+asyn-R4-9-lcls2:   Build with base-R3-14-9-lcls1 and ipac-R2-8-lcls4.
+		   Include ipac support only for RTEMS-beatnik target.
+
+asyn-R4-9-lcls1:   Build with base-R3-14-8-2-lcls2 and ipac-R2-8-lcls3.
+		   Include ipac support only for RTEMS-beatnik target.
+
+asyn-R4-9:         Direct import from APS source.  Will not build at SLAC.
+
+asyn-R4-7-1-lcls5: Build with base-R3-14-9-lcls1 (RTEMS 4.7.1)
+                   modifications needed to bring the module to EPICS R3-14-9 standard
+                   at LCLS
+
 asyn-R4-7-1-lcls4: Backout to build with base-R2-14-8-2-lcls2
                    Build with ipac-R2-8-lcls3
                    Add this file
