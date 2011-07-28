@@ -5,7 +5,8 @@ include $(TOP)/RELEASE_SITE
 # ===============================================================
 # Define the location and version of EPICS base
 # ===============================================================
-BASE_MODULE_VERSION=R3.14.9-0.3.0
+#BASE_MODULE_VERSION=R3.14.9-0.3.0
+BASE_MODULE_VERSION=R3.14.11-0.1.0
 EPICS_BASE=$(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
 
 #
@@ -21,7 +22,8 @@ EPICS_BASE=$(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
 # Define the version(s) of any other needed modules 
 # ===============================================================
 # Example: IPAC_MODULE_VERSION=R2.8.4-0.2.0
-IPAC_MODULE_VERSION=R2.8.4-1.0.0
+#IPAC_MODULE_VERSION=R2.8.4-1.0.0
+IPAC_MODULE_VERSION=R2.11.0-0.1.0
 
 # ============================================================
 # External Support module path definitions
