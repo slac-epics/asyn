@@ -23,7 +23,7 @@ EPICS_BASE=$(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
 # ===============================================================
 # Example: IPAC_MODULE_VERSION=R2.8.4-0.2.0
 #IPAC_MODULE_VERSION=R2.8.4-1.0.0
-IPAC_MODULE_VERSION=R2.11.0-0.1.0
+IPAC_MODULE_VERSION=R2.11.0-0.1.2
 
 # ============================================================
 # External Support module path definitions
