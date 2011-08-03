@@ -38,24 +38,25 @@
 typedef struct myData {
     epicsMutexId mutexId;
     char         *portName;
+    double       readTimeout;
     asynOctet    *pasynOctet;
-    epicsMessageQueueId msgQueue;
     void         *octetPvt;
     void         *registrarPvt;
-    double       readTimeout;
+    epicsMessageQueueId msgQueue;
 } myData;
 
 static void echoListener(myData *pPvt)
 {
     asynUser *pasynUser;
     char buffer[MESSAGE_SIZE];
-    int nread, eomReason;
+    size_t nread;
+    int eomReason;
     asynStatus status;
 
     status = pasynOctetSyncIO->connect(pPvt->portName, 0, &pasynUser, NULL);
     if (status) {
         asynPrint(pasynUser, ASYN_TRACE_ERROR,
-                  "echoListenter: unable to connect to port %s\n", 
+                  "echoListener: unable to connect to port %s\n", 
                   pPvt->portName);
         return;
     }
@@ -84,14 +85,13 @@ static void echoListener(myData *pPvt)
                       "echoListener: %s read %d: %s\n", 
                       pPvt->portName, nread, buffer);
             epicsMessageQueueSend(pPvt->msgQueue, buffer, MESSAGE_SIZE);
-            epicsThreadSleep(0.01); /* Let the writer thread get time to run */
             break;
         case asynTimeout:
             asynPrint(pasynUser, ASYN_TRACEIO_DEVICE,
-                      "echoListener: TIMEOUT %s read %d %s\n", 
+                      "echoListener: timeout on: %s read %d: %s\n", 
                       pPvt->portName, nread, buffer);
-             /* Timeout is expected, just try again */
-             break;
+            /* Timeout is expected, just try again */
+            break;
         default:
             asynPrint(pasynUser, ASYN_TRACE_ERROR,
                       "echoListener: read error on: %s: status=%d error=%s\n", 
@@ -100,14 +100,21 @@ static void echoListener(myData *pPvt)
         }
     }
     done:
-    return;
+    status = pasynManager->freeAsynUser(pasynUser);
+    if (status != asynSuccess) {
+        asynPrint(pasynUser, ASYN_TRACE_ERROR,
+                              "echoListener: Can't free port %s asynUser\n",
+                                                               pPvt->portName);
+    }
+    free(pPvt->portName);
+    free(pPvt);
 }
 
 static void echoWriter(myData *pPvt)
 {
     asynUser *pasynUser;
     char buffer[MESSAGE_SIZE];
-    int nread, nwrite;
+    size_t nread, nwrite;
     asynStatus status;
 
     status = pasynOctetSyncIO->connect(pPvt->portName, 0, &pasynUser, NULL);
@@ -143,7 +150,7 @@ static void connectionCallback(void *drvPvt, asynUser *pasynUser, char *portName
     asynPrint(pasynUser, ASYN_TRACE_FLOW, 
               "ipEchoServer: connectionCallback, portName=%s\n", portName);
     epicsMutexLock(pPvt->mutexId);
-    /* Make a copy of myData, with new port name */
+    /* Make a copy of myData, with new portName */
     *newPvt = *pPvt;
     epicsMutexUnlock(pPvt->mutexId);
     newPvt->portName = epicsStrDup(portName);
@@ -185,6 +192,10 @@ static void ipEchoServer(const char *portName, int readTimeout)
         printf("%s driver not supported\n",asynOctetType);
         return;
     }
+    if (readTimeout == 0) 
+        pPvt->readTimeout = READ_TIMEOUT;
+    else 
+        pPvt->readTimeout = readTimeout/1000.;
     pPvt->pasynOctet = (asynOctet *)pasynInterface->pinterface;
     pPvt->octetPvt = pasynInterface->drvPvt;
     status = pPvt->pasynOctet->registerInterruptUser(
@@ -194,7 +205,6 @@ static void ipEchoServer(const char *portName, int readTimeout)
         printf("ipEchoServer devAsynOctet registerInterruptUser %s\n",
                pasynUser->errorMessage);
     }
-    pPvt->readTimeout = readTimeout/1000.;
 }
 
 static const iocshArg ipEchoServerArg0 = {"port", iocshArgString};

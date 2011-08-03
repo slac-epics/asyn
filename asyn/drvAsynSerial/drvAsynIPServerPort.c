@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * drvAsynIPServerPort.c,v 1.13 2008/07/15 18:40:29 rivers Exp
+ * $Id: drvAsynIPServerPort.c,v 1.15 2009-08-19 20:24:20 rivers Exp $
  */
 
 #include <string.h>
@@ -159,7 +159,8 @@ static void connectionListener(void *drvPvt)
 {
     ttyController_t *tty = (ttyController_t *)drvPvt;
     struct sockaddr_in clientAddr;
-    int clientFd, clientLen=sizeof(clientAddr);
+    int clientFd;
+    osiSocklen_t clientLen=sizeof(clientAddr);
     ELLLIST *pclientList;
     interruptNode *pnode;
     asynOctetInterrupt *pinterrupt;
@@ -197,6 +198,7 @@ static void connectionListener(void *drvPvt)
         if (!pnode) {
             /* There are no registered clients to handle connections on this port */
             epicsSocketDestroy(clientFd);
+            continue;
         }
         /* Search for a port we have already created which is now disconnected */
         pl = NULL;
@@ -244,7 +246,14 @@ static void connectionListener(void *drvPvt)
         }
         /* Set the existing port to use the new file descriptor */
         pl->pasynUser->reason = clientFd;
-        pasynCommonSyncIO->connectDevice(pl->pasynUser);
+        status = pasynCommonSyncIO->connectDevice(pl->pasynUser);
+        if (status!=asynSuccess) {
+            asynPrint(pasynUser, ASYN_TRACE_ERROR,
+                "%s drvAsynIPServerPort: error calling "
+                "pasynCommonSyncIO->connectDevice %s\n",
+                pl->portName,pl->pasynUser->errorMessage);
+            continue;
+        }
         pl->pasynUser->reason = 0;
         /* Set the new port to initially have the same trace mask that we have */
         pasynTrace->setTraceMask(pl->pasynUser,   pasynTrace->getTraceMask(pasynUser));
@@ -365,14 +374,13 @@ int drvAsynIPServerPortConfigure(const char *portName,
      */
     protocol[0] = '\0';
     if (((cp = strchr(serverInfo, ':')) == NULL)
-     || (sscanf(cp, ":%ud %5s", &tty->portNumber, protocol) < 1)) {
+     || (sscanf(cp, ":%u %5s", &tty->portNumber, protocol) < 1)) {
         printf("drvAsynIPPortConfigure: \"%s\" is not of the form \"<host>:<port> [protocol]\"\n",
                                                         tty->serverInfo);
         ttyCleanup(tty);
         return -1;
     }
     *cp = '\0';
-
 
     if ((protocol[0] ==  '\0')
      || (epicsStrCaseCmp(protocol, "tcp") == 0)) {

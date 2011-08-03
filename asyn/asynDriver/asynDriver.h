@@ -19,13 +19,19 @@
 #include <ellLib.h>
 #include <shareLib.h>
 
+/* Version number names similar to those provide by base
+ * These macros are always numeric */
+#define ASYN_VERSION       4
+#define ASYN_REVISION     14
+#define ASYN_MODIFICATION  0
+
 #ifdef __cplusplus
 extern "C" {
 #endif  /* __cplusplus */
 
 
 typedef enum {
-    asynSuccess,asynTimeout,asynOverflow,asynError
+    asynSuccess,asynTimeout,asynOverflow,asynError,asynDisconnected,asynDisabled
 }asynStatus;
 
 typedef enum {
@@ -66,6 +72,11 @@ typedef struct asynInterface{
 
 /*standard values for asynUser.reason*/
 #define ASYN_REASON_SIGNAL -1
+
+#define ASYN_REASON_RESERVED_LOW 0x70000000
+#define ASYN_REASON_RESERVED_HIGH 0x7FFFFFFF
+
+#define ASYN_REASON_QUEUE_EVEN_IF_NOT_CONNECTED ASYN_REASON_RESERVED_LOW
 
 typedef void (*userCallback)(asynUser *pasynUser);
 typedef void (*exceptionCallback)(asynUser *pasynUser,asynException exception);
@@ -121,6 +132,8 @@ typedef struct asynManager {
     asynStatus (*isConnected)(asynUser *pasynUser,int *yesNo);
     asynStatus (*isEnabled)(asynUser *pasynUser,int *yesNo);
     asynStatus (*isAutoConnect)(asynUser *pasynUser,int *yesNo);
+    asynStatus (*setAutoConnectTimeout)(double timeout);
+    asynStatus (*waitConnect)(asynUser *pasynUser, double timeout);
     /*The following are methods for interrupts*/
     asynStatus (*registerInterruptSource)(const char *portName,
                                asynInterface *pasynInterface, void **pasynPvt);

@@ -299,21 +299,48 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,
     asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
         "%s devAsynFloat64::interruptCallbackInput new value=%f\n",
         pr->name, value);
-    count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
-    if (count != size) {
-        epicsMutexLock(pPvt->mutexId);
-        pPvt->ringBufferOverflows++;
-        epicsMutexUnlock(pPvt->mutexId);
-    }
     /* There is a problem.  A driver could be calling us with a value after
      * this record has registered for callbacks but before EPICS has set interruptAccept,
      * which means that scanIoRequest will return immediately.
-     * This is very bad, because we will have pushed a value into the ring buffer
-     * but it won't get popped off because the record won't process.  The values
+     * This is very bad, because if we have pushed a value into the ring buffer
+     * it won't get popped off because the record won't process.  The values
      * read the next time the record processes would then be stale.
-     * Work around this problem by waiting here for interruptAccept */
-    while (!interruptAccept) epicsThreadSleep(0.1);
-    scanIoRequest(pPvt->ioScanPvt);
+     * We previously worked around this problem by waiting here for interruptAccept.
+     * But that does not work if the callback is coming from the thread that is executing
+     * iocInit, which can happen with synchronous drivers (ASYN_CANBLOCK=0) that do callbacks
+     * when a value is written to them, which can happen in initRecord for an output record.
+     * Instead we just return.  There will then be nothing in the ring buffer, so the first
+     * read will do a read from the driver, which should be OK. */
+    if (!interruptAccept) return;
+    /* Note that we put a lock around epicsRingBytesPut and Get because we potentially have
+     * more than one reader, since the reader is whatever thread is processing the record */
+    epicsMutexLock(pPvt->mutexId);
+    count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
+    if (count != size) {
+        /* There was no room in the ring buffer.  In the past we just threw away
+         * the new value.  However, it is better to remove the oldest value from the
+         * ring buffer and add the new one.  That way the final value the record receives
+         * is guaranteed to be the most recent value */
+        epicsFloat64 dummy;
+        count = epicsRingBytesGet(pPvt->ringBuffer, (char *)&dummy, size);
+        if (count != size) {
+            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
+                "%s devAsynFloat64 interruptCallbackInput error, ring read failed\n",
+                pPvt->pr->name);
+        }
+        count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
+        if (count != size) {
+            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
+                "%s devAsynFloat64 interruptCallbackInput error, ring put failed\n",
+                pPvt->pr->name);
+        }
+        pPvt->ringBufferOverflows++;
+    } else {
+        /* We only need to request the record to process if we added a 
+         * new element to the ring buffer, not if we just replaced an element. */
+        scanIoRequest(pPvt->ioScanPvt);
+    }    
+    epicsMutexUnlock(pPvt->mutexId);
 }
 
 static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,
@@ -326,12 +353,12 @@ static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,
     asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
         "%s devAsynFloat64::interruptCallbackOutput new value=%f\n",
         pr->name, value);
+    epicsMutexLock(pPvt->mutexId);
     count = epicsRingBytesPut(pPvt->ringBuffer, (char *)&value, size);
     if (count != size) {
-        epicsMutexLock(pPvt->mutexId);
         pPvt->ringBufferOverflows++;
-        epicsMutexUnlock(pPvt->mutexId);
     }
+    epicsMutexUnlock(pPvt->mutexId);
     scanOnce(pr);
 }
 
@@ -354,8 +381,8 @@ static void getCallbackValue(devPvt *pPvt)
 {
     int count, size=sizeof(epicsFloat64);
 
+    epicsMutexLock(pPvt->mutexId);
     if (pPvt->ringBuffer && (epicsRingBytesUsedBytes(pPvt->ringBuffer) >= size)) {
-        epicsMutexLock(pPvt->mutexId);
         if (pPvt->ringBufferOverflows > 0) {
             asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
                 "%s devAsynFloat64 getCallbackValue error, %d ring buffer overflows\n",
@@ -363,14 +390,17 @@ static void getCallbackValue(devPvt *pPvt)
                 pPvt->ringBufferOverflows = 0;
         }
         count = epicsRingBytesGet(pPvt->ringBuffer, (char *)&pPvt->value, size);
-        if (count == size)
+        if (count == size) {
+            asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
+                "%s devAsynFloat64::getCallbackValue from ringBuffer value=%f\n",pPvt->pr->name,pPvt->value);
             pPvt->gotValue = 1;
+        }
         else 
             asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
                 "%s devAsynFloat64 getCallbackValue error, ring read failed\n",
                 pPvt->pr->name);
-        epicsMutexUnlock(pPvt->mutexId);
     }
+    epicsMutexUnlock(pPvt->mutexId);
 }
 
 static long initAi(aiRecord *pai)
@@ -439,9 +469,10 @@ static long processAo(aoRecord *pr)
 
     getCallbackValue(pPvt);
     if(pPvt->gotValue) {
+        /* This code is for I/O Intr scanned output records, which are not tested yet. */
         pr->val = pPvt->value; pr->udf = 0;
     } else if(pr->pact == 0) {
-        pPvt->gotValue = 1; pPvt->value = pr->oval;
+        pPvt->value = pr->oval;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
@@ -481,10 +512,12 @@ static long processAiAverage(aiRecord *pai)
     devPvt *pPvt = (devPvt *)pai->dpvt;
 
     epicsMutexLock(pPvt->mutexId);
-    if (pPvt->numAverage == 0) 
-        pPvt->numAverage = 1;
-    else
-        pai->udf = 0;
+    if (pPvt->numAverage == 0) {
+        recGblSetSevr(pai, UDF_ALARM, INVALID_ALARM);
+        pai->udf = 1;
+        return -2;
+    }
+    pai->udf = 0;
     pai->val = pPvt->sum/pPvt->numAverage;
     pPvt->numAverage = 0;
     pPvt->sum = 0.;

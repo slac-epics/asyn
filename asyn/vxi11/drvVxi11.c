@@ -698,13 +698,11 @@ static void vxiCreateIrqChannel(vxiPort *pvxiPort,asynUser *pasynUser)
             "%s vxiCreateIrqChannel (create_intr_chan)%s\n",
             pvxiPort->portName,clnt_sperror(pvxiPort->rpcClient,""));
         xdr_free((const xdrproc_t) xdr_Device_Error, (char *) &devErr);
-        clnt_destroy(pvxiPort->rpcClient);
     } else if(devErr.error != VXI_OK) {
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
             "%s vxiCreateIrqChannel %s (create_intr_chan)\n",
             pvxiPort->portName, vxiError(devErr.error));
         xdr_free((const xdrproc_t) xdr_Device_Error, (char *) &devErr);
-        clnt_destroy(pvxiPort->rpcClient);
     } else {
         vxiSrqEnable(pvxiPort,1);
         xdr_free((const xdrproc_t) xdr_Device_Error, (char *) &devErr);
@@ -851,6 +849,19 @@ static asynStatus vxiConnectPort(vxiPort *pvxiPort,asynUser *pasynUser)
     asynStatus  status;
     struct sockaddr_in vxiServer;
 
+    /* Previously this pasynUser was created and connected to the port in vxi11Configure 
+     * after calling pasynGpib->registerPort
+     * But in asyn R4-12 and later a call to pasynCommon->connect (which calls this function) 
+     * can happen almost immediately when pasynGpib->registerPort is called, so we move the code here. */
+    if (!pvxiPort->pasynUser) {
+        pvxiPort->pasynUser = pasynManager->createAsynUser(0,0);
+        pvxiPort->pasynUser->timeout = pvxiPort->defTimeout;
+        status = pasynManager->connectDevice(
+            pvxiPort->pasynUser,pvxiPort->portName,-1);
+        if (status!=asynSuccess) 
+            asynPrint(pasynUser, ASYN_TRACE_ERROR,
+            "vxiConnectPort: connectDevice failed %s\n",pvxiPort->pasynUser->errorMessage);
+    }
     if(pvxiPort->server.connected) {
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
             "%s vxiConnectPort but already connected\n",pvxiPort->portName);
@@ -1031,7 +1042,7 @@ static asynStatus vxiConnect(void *drvPvt,asynUser *pasynUser)
         return asynSuccess;
     }
     if(addr==-1) return vxiConnectPort(pvxiPort,pasynUser);
-    if(!pdevLink->lid) {
+    if(!pdevLink->connected) {
         Device_Link lid;
 
         if(!vxiCreateDevLink(pvxiPort,addr,&lid)) {
@@ -1041,8 +1052,8 @@ static asynStatus vxiConnect(void *drvPvt,asynUser *pasynUser)
             return asynError;
         }
         pdevLink->lid = lid;
+        pdevLink->connected = TRUE;
     }
-    pdevLink->connected = TRUE;
     pasynManager->exceptionConnect(pasynUser);
     return asynSuccess;
 }
@@ -1557,7 +1568,7 @@ static asynStatus vxiSerialPoll(void *drvPvt, int addr,
     }
     pdevLink = vxiGetDevLink(pvxiPort,0,addr);
     if(!pdevLink) return asynError;
-    if(!pdevLink->lid) {
+    if(!pdevLink->connected) {
         Device_Link lid;
         if(!vxiCreateDevLink(pvxiPort,addr,&lid)) {
             printf("%s vxiCreateDevLink failed for addr %d\n",
@@ -1565,6 +1576,7 @@ static asynStatus vxiSerialPoll(void *drvPvt, int addr,
             return asynError;
         }
         pdevLink->lid = lid;
+    	pdevLink->connected = TRUE;
     }
     devGenP.lid = pdevLink->lid;
     devGenP.flags = 0; /* no timeout on a locked gateway */
@@ -1706,12 +1718,15 @@ int vxi11Configure(char *dn, char *hostName, int recoverWithIFC,
         printf("registerPort failed\n");
         return 0;
     }
-    pvxiPort->pasynUser = pasynManager->createAsynUser(0,0);
-    pvxiPort->pasynUser->timeout = pvxiPort->defTimeout;
-    status = pasynManager->connectDevice(
-        pvxiPort->pasynUser,pvxiPort->portName,-1);
-    if(status!=asynSuccess) 
-        printf("connectDevice failed %s\n",pvxiPort->pasynUser->errorMessage);
+    /* pvxiPort->pasynUser may have been created already by a connection callback to vxiConnectPort */
+    if (!pvxiPort->pasynUser) {
+        pvxiPort->pasynUser = pasynManager->createAsynUser(0,0);
+        pvxiPort->pasynUser->timeout = pvxiPort->defTimeout;
+        status = pasynManager->connectDevice(
+            pvxiPort->pasynUser,pvxiPort->portName,-1);
+        if (status!=asynSuccess) 
+            printf("vxiConnectPort: connectDevice failed %s\n",pvxiPort->pasynUser->errorMessage);
+    }
     pvxiPort->option.interfaceType = asynOptionType;
     pvxiPort->option.pinterface  = (void *)&vxiOption;
     pvxiPort->option.drvPvt = pvxiPort;
