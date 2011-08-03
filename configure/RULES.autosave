@@ -1,0 +1,94 @@
+####################################################
+# RULES for building and installing autosave files
+
+# Display how this makefile was called
+$(info RULES.autosave: '$(MAKECMDGOALS)')
+
+####################################################
+# Where to find and install files for autosave
+
+vpath %.req           $(USR_VPATH) $(GENERIC_SRC_DIRS) $(dir $(REQ))
+vpath %.sub-req       $(USR_VPATH) $(GENERIC_SRC_DIRS) $(dir $(REQ)) $(COMMON_DIR)
+vpath %.substitutions $(USR_VPATH) $(GENERIC_SRC_DIRS) $(dir $(REQ)) $(COMMON_DIR)
+vpath %.template      $(USR_VPATH) $(GENERIC_SRC_DIRS) $(dir $(REQ)) $(COMMON_DIR)
+vpath %.tpl-req       $(USR_VPATH) $(GENERIC_SRC_DIRS) $(dir $(REQ)) $(COMMON_DIR)
+
+# INSTALL_AUTOSAVE = $(INSTALL_LOCATION)/autosave
+
+####################################################
+# Autosave Flags (-I path)
+
+INSTALL_AUTOSAVEFLAGS = -I $(INSTALL_AUTOSAVE)
+RELEASE_AUTOSAVEFLAGS = $(patsubst %/dbd,%/autosave, $(RELEASE_DBDFLAGS))
+AUTOSAVEFLAGS  = $($*_AUTOSAVEFLAGS) $(USR_AUTOSAVEFLAGS) -I. $(GENERIC_SRC_INCLUDES) $(INSTALL_AUTOSAVEFLAGS) $(RELEASE_AUTOSAVEFLAGS)
+AUTOSAVEFLAGS += -I$(COMMON_DIR)
+
+####################################################
+# Build targets
+
+INSTALL_REQS += $(addprefix $(INSTALL_AUTOSAVE)/,$(notdir $(REQ)))
+
+build:	$(INSTALL_REQS)
+
+rebuild:        clean install
+
+buildInstall:	$(INSTALL_REQS)
+
+realclean:: clean
+
+clean::
+	@$(RM) $(COMMONS)
+	@$(RM) $(TARGETS)
+	@echo "Cleaning"
+
+####################################################
+# Build and install Rules
+
+$(COMMON_DIR)/%.req: %.substitutions
+	@echo "Inflating autosave request from $<"
+	@$(RM) $@
+	$(MSI) $(AUTOSAVEFLAGS) -S$< > msi.tmp
+	$(MV) msi.tmp $@
+
+$(COMMON_DIR)/%.req: %.sub-req
+	@echo "Inflating autosave request from $<"
+	@$(RM) $@
+	$(MSI) $(AUTOSAVEFLAGS) -S$< > msi.tmp
+	$(MV) msi.tmp $@
+
+INSTALL = $(PERL) $(TOOLS)/installEpics.pl
+
+$(INSTALL_AUTOSAVE)/%: $(COMMON_DIR)/%
+	@echo "Installing autosave file $@"
+	@$(INSTALL) -d -m 644 $< $(@D)
+
+$(INSTALL_AUTOSAVE)/%.req:	%.req  
+	@echo "Installing autosave file $@"
+	@$(INSTALL) -d -m 644 $< $(@D)
+
+$(INSTALL_AUTOSAVE)/%.sub-req:	%.sub-req  
+	@echo "Installing autosave file $@"
+	@$(INSTALL) -d -m 644 $< $(@D)
+
+#.PRECIOUS: $(COMMON_DIR)/%.req
+
+$(INSTALL_AUTOSAVE)/%.substitutions: %.substitutions
+	@echo "Installing autosave substitutions file $@"
+	@$(INSTALL) -d -m 644 $< $(@D)
+
+$(INSTALL_AUTOSAVE)/%.sub-req: %.sub-req
+	@echo "Installing autosave substitutions file $@"
+	@$(INSTALL) -d -m 644 $< $(@D)
+
+#.PRECIOUS: $(COMMON_DIR)/%.substitutions
+
+$(INSTALL_AUTOSAVE)/%.template: %.template
+	@echo "Installing autosave template file $@"
+	@$(INSTALL) -d -m 644 $< $(@D)
+
+$(INSTALL_AUTOSAVE)/%.tpl-req: %.tpl-req
+	@echo "Installing autosave template file $@"
+	@$(INSTALL) -d -m 644 $< $(@D)
+
+#.PRECIOUS: $(COMMON_DIR)/%.template
+
