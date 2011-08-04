@@ -1,5 +1,4 @@
 TOP=../..
 include $(TOP)/configure/CONFIG
-DB += testIPServer.db
-DB += asynPortTest.db
+DB += testAsynPortDriver.db
 include $(TOP)/configure/RULES
