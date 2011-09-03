@@ -8,12 +8,6 @@ EPICS_SITE_TOP=/reg/g/pcds/package/epics/3.14
 # EPICS module releases are kept here
 EPICS_MODULES=$(EPICS_SITE_TOP)/modules
 
-# If EPICS_HOST_ARCH is not set, derive it
-ifndef EPICS_HOST_ARCH
-EPICS_HOST_ARCH=$(shell $(EPICS_SITE_TOP)/base/current/startup/EpicsHostArch.pl)
-export EPICS_HOST_ARCH
-endif
-
 # Use the latest version of msi to avoid dependency on the extensions version
-MSI=$(EPICS_SITE_TOP)/extensions/current/bin/$(EPICS_HOST_ARCH)/msi
+MSI=$(EPICS_SITE_TOP)/extensions/current/bin/linux-x86/msi
 
