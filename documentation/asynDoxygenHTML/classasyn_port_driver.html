@@ -182,6 +182,12 @@ Inheritance diagram for asynPortDriver:</div>
 <tr><td class="memItemLeft" nowrap align="right" valign="top">virtual asynStatus&nbsp;</td><td class="memItemRight" valign="bottom"><a class="el" href="classasyn_port_driver.html#bba1da45d9b3a520ea0cfdb6e01a9ed3">getParamName</a> (int list, int index, const char **name)</td></tr>
 
 <tr><td class="mdescLeft">&nbsp;</td><td class="mdescRight">Returns the name of a parameter in the parameter library.  <a href="#bba1da45d9b3a520ea0cfdb6e01a9ed3"></a><br></td></tr>
+<tr><td class="memItemLeft" nowrap align="right" valign="top">virtual void&nbsp;</td><td class="memItemRight" valign="bottom"><a class="el" href="classasyn_port_driver.html#7cbe73cb1d38341f78a487d3e2411565">reportSetParamErrors</a> (asynStatus status, int index, int list, const char *functionName)</td></tr>
+
+<tr><td class="mdescLeft">&nbsp;</td><td class="mdescRight">Reports errors when setting parameters.  <a href="#7cbe73cb1d38341f78a487d3e2411565"></a><br></td></tr>
+<tr><td class="memItemLeft" nowrap align="right" valign="top">virtual void&nbsp;</td><td class="memItemRight" valign="bottom"><a class="el" href="classasyn_port_driver.html#5403d81341bc5a391c0419593e041e4c">reportGetParamErrors</a> (asynStatus status, int index, int list, const char *functionName)</td></tr>
+
+<tr><td class="mdescLeft">&nbsp;</td><td class="mdescRight">Reports errors when getting parameters.  <a href="#5403d81341bc5a391c0419593e041e4c"></a><br></td></tr>
 <tr><td class="memItemLeft" nowrap align="right" valign="top">virtual asynStatus&nbsp;</td><td class="memItemRight" valign="bottom"><a class="el" href="classasyn_port_driver.html#e5373b45dd879ea203cf3ab03a7abdb4">setIntegerParam</a> (int index, int value)</td></tr>
 
 <tr><td class="mdescLeft">&nbsp;</td><td class="mdescRight">Sets the value for an integer in the parameter library.  <a href="#e5373b45dd879ea203cf3ab03a7abdb4"></a><br></td></tr>
@@ -2240,6 +2246,57 @@ Reports on status of the driver.
 If details &gt; 1 then information is printed about the contents of the parameter library. If details &gt; 2 then information is printed about all of the interrupt callbacks registered. Derived classes typically reimplement this function to print driver-specific details and then call this base class function. 
 </div>
 </div><p>
+<a class="anchor" name="5403d81341bc5a391c0419593e041e4c"></a><!-- doxytag: member="asynPortDriver::reportGetParamErrors" ref="5403d81341bc5a391c0419593e041e4c" args="(asynStatus status, int index, int list, const char *functionName)" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void asynPortDriver::reportGetParamErrors           </td>
+          <td>(</td>
+          <td class="paramtype">asynStatus&nbsp;</td>
+          <td class="paramname"> <em>status</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&nbsp;</td>
+          <td class="paramname"> <em>index</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&nbsp;</td>
+          <td class="paramname"> <em>list</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&nbsp;</td>
+          <td class="paramname"> <em>functionName</em></td><td>&nbsp;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td><td><code> [virtual]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+<p>
+Reports errors when getting parameters. 
+<p>
+asynParamBadIndex and asynParamWrongType are printed with ASYN_TRACE_ERROR because they should never happen. asynParamUndefined is printed with ASYN_TRACE_FLOW because it is an expected error if the value is read before it is defined, which device support can do. <dl compact><dt><b>Parameters:</b></dt><dd>
+  <table border="0" cellspacing="2" cellpadding="0">
+    <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>status</em>&nbsp;</td><td>The error status. </td></tr>
+    <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>index</em>&nbsp;</td><td>The parameter number </td></tr>
+    <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>list</em>&nbsp;</td><td>The parameter list number. Must be &lt; maxAddr passed to <a class="el" href="classasyn_port_driver.html#cf77e873fc4fdbd8d07154ef80dc38b8" title="Constructor for the asynPortDriver class.">asynPortDriver::asynPortDriver</a>. </td></tr>
+    <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>functionName</em>&nbsp;</td><td>The name of the function that generated the error </td></tr>
+  </table>
+</dl>
+
+</div>
+</div><p>
 <a class="anchor" name="93675408d6351491c56d8bb874852cd9"></a><!-- doxytag: member="asynPortDriver::reportParams" ref="93675408d6351491c56d8bb874852cd9" args="(FILE *fp, int details)" -->
 <div class="memitem">
 <div class="memproto">
@@ -2272,6 +2329,57 @@ Calls paramList::report(fp, details) for each parameter list that the driver sup
   <table border="0" cellspacing="2" cellpadding="0">
     <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>fp</em>&nbsp;</td><td>The file pointer on which report information will be written </td></tr>
     <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>details</em>&nbsp;</td><td>The level of report detail desired. </td></tr>
+  </table>
+</dl>
+
+</div>
+</div><p>
+<a class="anchor" name="7cbe73cb1d38341f78a487d3e2411565"></a><!-- doxytag: member="asynPortDriver::reportSetParamErrors" ref="7cbe73cb1d38341f78a487d3e2411565" args="(asynStatus status, int index, int list, const char *functionName)" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void asynPortDriver::reportSetParamErrors           </td>
+          <td>(</td>
+          <td class="paramtype">asynStatus&nbsp;</td>
+          <td class="paramname"> <em>status</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&nbsp;</td>
+          <td class="paramname"> <em>index</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&nbsp;</td>
+          <td class="paramname"> <em>list</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&nbsp;</td>
+          <td class="paramname"> <em>functionName</em></td><td>&nbsp;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td><td><code> [virtual]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+<p>
+Reports errors when setting parameters. 
+<p>
+<dl compact><dt><b>Parameters:</b></dt><dd>
+  <table border="0" cellspacing="2" cellpadding="0">
+    <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>status</em>&nbsp;</td><td>The error status. </td></tr>
+    <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>index</em>&nbsp;</td><td>The parameter number </td></tr>
+    <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>list</em>&nbsp;</td><td>The parameter list number. Must be &lt; maxAddr passed to <a class="el" href="classasyn_port_driver.html#cf77e873fc4fdbd8d07154ef80dc38b8" title="Constructor for the asynPortDriver class.">asynPortDriver::asynPortDriver</a>. </td></tr>
+    <tr><td valign="top"><tt>[in]</tt>&nbsp;</td><td valign="top"><em>functionName</em>&nbsp;</td><td>The name of the function that generated the error </td></tr>
   </table>
 </dl>
 
@@ -3180,9 +3288,9 @@ The name of this asyn port.
 </div>
 </div><p>
 <hr>The documentation for this class was generated from the following files:<ul>
-<li>/home/epics/devel/asynHEAD/asyn/miscellaneous/<a class="el" href="asyn_port_driver_8h-source.html">asynPortDriver.h</a><li>/home/epics/devel/asynHEAD/asyn/miscellaneous/<a class="el" href="asyn_port_driver_8cpp.html">asynPortDriver.cpp</a></ul>
+<li>/home/epics/devel/asynR4-14/asyn/miscellaneous/<a class="el" href="asyn_port_driver_8h-source.html">asynPortDriver.h</a><li>/home/epics/devel/asynR4-14/asyn/miscellaneous/<a class="el" href="asyn_port_driver_8cpp.html">asynPortDriver.cpp</a></ul>
 </div>
-<hr size="1"><address style="text-align: right;"><small>Generated on Mon Apr 12 13:05:25 2010 for asyn by&nbsp;
+<hr size="1"><address style="text-align: right;"><small>Generated on Thu Jul 29 16:44:05 2010 for asyn by&nbsp;
 <a href="http://www.doxygen.org/index.html">
 <img src="doxygen.png" alt="doxygen" align="middle" border="0"></a> 1.5.7.1 </small></address>
 </body>

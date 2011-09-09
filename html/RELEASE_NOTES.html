@@ -13,6 +13,127 @@
   <hr />
   <div style="text-align: center">
     <h2>
+      Release 4-14</h2>
+    <h2>
+      July 29, 2010</h2>
+  </div>
+  <h3>
+    asynDriver</h3>
+  <p>
+    Fixed bugs in connection management. Releases 4-11 through 4-13 had the following
+    problems:</p>
+  <ul>
+    <li>If a port was multi-device and auto-connect, and was only accessed using SyncIO
+      calls, then asynManager would never connect to the devices. If regular queued requests
+      were used, which happens if an asyn record is connected to that port and device,
+      then it would connect once the first queue request was done.</li>
+    <li>For all auto-connect ports there was a race condition, such that the port might
+      or might not be connected when the first queued request or SyncIO call was done
+      on that port. This arose because when the port registered its asynCommon interface,
+      asynManager queued a connection request on that port. But if that connection request
+      callback, which executes in the portThread, had not yet occurred when a queue request
+      or SyncIO call was made, then those operations would be rejected because the port
+      was not yet connected.</li>
+  </ul>
+  <p>
+    These problems were fixed by doing the following:</p>
+  <ul>
+    <li>When the port registers its asynCommon interface and asynManager queues the connection
+      request, it now waits for a short time for the connection callback to complete.
+      The default time is 0.5 seconds, but this time can be changed with a call to the
+      new function pasynManager-&gt;setAutoConnectTimeout(double timeout). This function
+      can be accessed from the iocsh shell with the new asynSetAutoConnectTimeout(double
+      timeout) command. This short timeout is designed to allow devices time to connect
+      if they are available, but not to excessively slow down booting of the IOC by waiting,
+      for example, for the system timeout on TCP connections. Note that this change means
+      that it is now very likely that the pasynCommon-&gt;connect() call will occur as
+      soon as the asynCommon interface is registered. As noted in the R4-12 release notes,
+      this means that the driver must have already done all initialization required for
+      the asynCommon-&gt;connect() callback before it registers the asynCommon interface!</li>
+    <li>There is an additional new function, pasynManager-&gt;waitConnect(asynUser *pasynUser,
+      double timeout), which will wait for the for the port to connect, up to the specified
+      timeout. This function can be called from the iocsh with the new command asynWaitConnect(const
+      char *portName, double timeout). This function makes it possible to wait longer
+      for a port to connect then the current value of the global autoconnect timeout described
+      above.</li>
+  </ul>
+  <p>
+    Fixed problems with the SyncIO calls, which were caused by the implementation of
+    pasynManager-&gt;lockPort():</p>
+  <ul>
+    <li>The SyncIO calls (e.g. asynOctetSyncIO) are implemented by calling pasynManager-&gt;lockPort(),
+      executing the I/O in the current thread, and then calling pasynManager-&gt;unlockPort().
+      These SyncIO functions are designed to be called from threads that are allowed to
+      block, such as SNL programs, or other drivers. The problem with the previous implementation
+      was that pasynManager-&gt;lockPort() immediately took the port mutex when it was
+      available, rather than queueing a request to take the mutex. This could lead to
+      one thread effectively getting exclusive access to the port, even if other threads
+      had queued requests or tried to do SyncIO calls themselves. For example, if a device
+      could send unsolicited input, then one might create a thread that simply called
+      pasynOctetSyncIO-&gt;read() with a short timeout in a tight loop. The problem with
+      this was that as soon as that thread released the port mutex when the read timed
+      out, it would take the mutex again, blocking other threads that were trying to access
+      the port.&nbsp; Previously the only solution to this problem was to add a short
+      epicsThreadSleep() in the read loop.</li>
+    <li>This problem has been fixed by reimplementing pasynManager-&gt;lockPort(), which
+      now queues a request to access the port and then blocks until the queue request
+      callback runs in the portThread. When the queue request runs, the thread that called
+      pasynManager-&gt;lockPort() executes, and the portThread blocks, until pasynManager-&gt;unlockPort()
+      is called.</li>
+    <li>Note that this change to lockPort() does change its functionality in one respect:
+      previously it was OK to call lockPort() on a port that was not connected. This is
+      no longer possible, because the queueRequest call in lockPort will now return an
+      error if the port is not connected.</li>
+    <li>The change to lockPort did not require any changes to the asynXXXSyncIO functions
+      except asynCommonSyncIO. The asynCommonSyncIO-&gt;connectDevice and asynCommonSyncIO-&gt;connectDevice
+      calls cannot use lockPort() any more, because as noted above it does not work with
+      disconnected ports. Rather, these functions now directly queue a connection request
+      with a private callback function to connect or disconnect the port.</li>
+  </ul>
+  <h3>
+    vxi11</h3>
+  <p>
+    Fixed a bug in driver initialization. The driver had not completed all required
+    initialization before it called pasynGpib-&gt;registerPort. Because pasynGpib-&gt;registerPort
+    registers the asynCommon interface, that now normally triggers an immediate callback
+    to vxiConnect, and the driver was not yet properly initialized to handle that callback.</p>
+  <p>
+    Added an additional example driver, asynPortTest, that uses asynPortDriver. It implements
+    the asynInt32, asynFloat64, and asynOctet interfaces to communicate with the echo
+    server using asynOctetSyncIO calls. This tests nested SyncIO calls. Added a new
+    startup script, database and medm screen for testing this new driver.</p>
+  <h3>
+    devGpib</h3>
+  <p>
+    Added a call to asynOctet-&gt;flush() just before the call to asynOctet-&gt;write()
+    operation when doing write/read operations. This eliminates any stale input that
+    may have already been sent by the device and would otherwise be incorrectly returned
+    by the read operation.</p>
+  <h3>
+    interposeEOS</h3>
+  <p>
+    Now behaves properly even when eomReason is NULL.</p>
+  <h3>
+    testIPServerApp</h3>
+  <p>
+    Changed ipEchoServer2.c to eliminate the epicsThreadSleep(0.01) in the listener
+    thread. This sleep is no longer necessary because of the change to lockPort described
+    above, so the example program was changed to test and demonstrate this.</p>
+  <div style="text-align: center">
+    <h2>
+      Release 4-13-1</h2>
+    <h2>
+      May 20, 2010</h2>
+  </div>
+  <h3>
+    asynPortDriver</h3>
+  <p>
+    Fixed bug in getXXXParam. It was not returning error status when a parameter was
+    undefined. This caused device support to use undefined values for output records,
+    because the initial read from the driver during device support initialization did
+    not return an error it should have.</p>
+  <div style="text-align: center">
+    <h2>
       Release 4-13</h2>
     <h2>
       April 1, 2010</h2>
@@ -99,11 +220,11 @@
     iocInit(). This means, for example, that calls to asynSetOption() to set serial
     port parameters fail if done in a startup script before iocInit(). R4-12 fixes this
     problem by decoupling autoconnect operations from iocInit(). NOTE: The first call
-    to the pasynCommon->connect() function now happens almost immediately after pasynManager->registerInterface()
+    to the pasynCommon-&gt;connect() function now happens almost immediately after pasynManager-&gt;registerInterface()
     is called for the asynCommon interface. This timing is different from all previous
     asyn releases, and it means that port drivers must initialize everything required
-    by asynCommon->connect() before they register the asynCommon interface. This may
-    require minor re-ordering of the initialization sequence in some drivers.</p>
+    by asynCommon-&gt;connect() before they register the asynCommon interface. This
+    may require minor re-ordering of the initialization sequence in some drivers.</p>
   <h3>
     drvAsynSerialPort</h3>
   <p>
