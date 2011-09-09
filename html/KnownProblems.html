@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type" />
@@ -10,11 +10,35 @@
     <h1>
       asynDriver: Asynchronous Driver Support - Known Problems</h1>
     <h1>
-      August 19, 2009</h1>
+      April 1, 2010</h1>
     <hr />
-    <h2>
-      Release 4-11</h2>
   </div>
+  <h2 style="text-align: center">
+    Release 4-12</h2>
+  <p>
+    As reported by Perter Müller, some NULL-pointer dereferences were added to asyn/asnGpib/asynGpib.c
+    in R4-7. These The following change fixes the problem:</p>
+  <pre>
+--- asyn/asynGpib/asynGpib.c    28 May 2008 18:58:50 -0000  1.43
++++ asyn/asynGpib/asynGpib.c    19 Oct 2009 13:58:50 -0000
+@@ -410,12 +410,12 @@
+     if(status!=asynSuccess) return status;
+     if(pgpibPvt-&gt;eoslen==1 &amp;&amp; nt&gt;0) {
+         if(data[nt-1]==pgpibPvt-&gt;eos) {
+-            *eomReason |= ASYN_EOM_EOS;
++            if (eomReason) *eomReason |= ASYN_EOM_EOS;
+             nt--;
+         }
+     }
+     if(nt&lt;maxchars) data[nt] = 0;
+-    if(nt==maxchars) *eomReason |= ASYN_EOM_CNT;
++    if((nt==maxchars) &amp;&amp; eomReason) *eomReason |= ASYN_EOM_CNT;
+     *nbytesTransfered = (size_t)nt;
+     pasynOctetBase-&gt;callInterruptUsers(pasynUser,pgpibPvt-&gt;pasynPvt,
+         data,nbytesTransfered,eomReason);
+</pre>
+  <h2 style="text-align: center">
+    Release 4-11</h2>
   <p>
     A problem was introduced in R4-11 by not starting the autoconnect process until
     iocInit(), and operations that do not use the XXXSyncIO functions thus fail before
@@ -28,8 +52,7 @@
   <p>
     There is a bug with autoconnecting to devices. The following change to asynManager.c
     fixes the problem:</p>
-  <pre>
-@@ -605,7 +607,7 @@
+  <pre>@@ -605,7 +607,7 @@
          epicsMutexUnlock(pport-&gt;asynManagerLock);
          connectAttempt(&amp;pdevice-&gt;dpc);
          epicsMutexMustLock(pport-&gt;asynManagerLock);
@@ -37,8 +60,7 @@
 +        pdevice-&gt;dpc.autoConnectActive = FALSE;
      }
      return pdevice-&gt;dpc.connected;
- }
-</pre>
+ }</pre>
   <h3>
     devEpics</h3>
   <p>
@@ -67,12 +89,10 @@
   <h3>
     devAsynFloat64.c</h3>
   <p>
-    The wrong interrupt callback routine was being called.
-  </p>
+    The wrong interrupt callback routine was being called.</p>
   <p>
     UDF is not set false when the VAL field is modified.</p>
-  <pre>
-Index: devAsynFloat64.c
+  <pre>Index: devAsynFloat64.c
 ===================================================================
 RCS file: /net/phoebus/epicsmgr/cvsroot/epics/modules/soft/asyn/asyn/devEpics/devAsynFloat64.c,v
 retrieving revision 1.18
@@ -138,14 +158,12 @@ diff -u -r1.18 -r1.20
 +              "%s devAsynFloat64::callbackAiAverage val=%f\n",
                pai-&gt;name, pai-&gt;val);
      return 2;
- }
-</pre>
+ }</pre>
   <h3>
     drvAsynSerialPort/drvAsynIPPort</h3>
   <p>
     NULL pointer dereference. How this one slipped through testing is quite surprising.</p>
-  <pre>
-Index: asyn/drvAsynSerial/drvAsynIPPort.c
+  <pre>Index: asyn/drvAsynSerial/drvAsynIPPort.c
 ===================================================================
 RCS file: /net/phoebus/epicsmgr/cvsroot/epics/modules/soft/asyn/asyn/drvAsynSerial/drvAsynIPPort.c,v
 retrieving revision 1.30
@@ -157,8 +175,8 @@ diff -u -r1.30 -r1.31
  ***********************************************************************/
  
  /*
-- * KnownProblems.html,v 1.38 2009/08/19 20:15:27 rivers Exp
-+ * KnownProblems.html,v 1.38 2009/08/19 20:15:27 rivers Exp
+- * $Id: KnownProblems.html,v 1.39 2009-10-19 14:05:49 norume Exp $
++ * $Id: KnownProblems.html,v 1.39 2009-10-19 14:05:49 norume Exp $
   */
  
  /* Previous versions of drvAsynIPPort.c (1.29 and earlier, asyn R4-5 and earlier)
@@ -183,8 +201,8 @@ diff -u -r1.34 -r1.35
  ***********************************************************************/
  
  /*
-- * KnownProblems.html,v 1.38 2009/08/19 20:15:27 rivers Exp
-+ * KnownProblems.html,v 1.38 2009/08/19 20:15:27 rivers Exp
+- * $Id: KnownProblems.html,v 1.39 2009-10-19 14:05:49 norume Exp $
++ * $Id: KnownProblems.html,v 1.39 2009-10-19 14:05:49 norume Exp $
   */
  
  #include &lt;string.h&gt;
@@ -196,8 +214,7 @@ diff -u -r1.34 -r1.35
 +    if (gotEom) *gotEom = 0;
      for (;;) {
  #ifdef vxWorks
-         /*
-</pre>
+         /*</pre>
   <h3>
     drvAsynIPPort</h3>
   <p>
@@ -206,8 +223,7 @@ diff -u -r1.34 -r1.35
     clients. The correct behavior in this case is to simply return an asynError status.</p>
   <p>
     The following change fix can be made to drvAsynIPPort.c to fix the problem:</p>
-  <pre>
-corvette> cvs diff -rR4-5 drvAsynIPPort.c
+  <pre>corvette&gt; cvs diff -rR4-5 drvAsynIPPort.c
 Index: drvAsynIPPort.c
 ===================================================================
 RCS file: /net/phoebus/epicsmgr/cvsroot/epics/modules/soft/asyn/asyn/drvAsynSerial/drvAsynIPPort.c,v
@@ -220,8 +236,8 @@ diff -u -r1.27 -r1.28
  ***********************************************************************/
  
  /*
-- * KnownProblems.html,v 1.38 2009/08/19 20:15:27 rivers Exp
-+ * KnownProblems.html,v 1.38 2009/08/19 20:15:27 rivers Exp
+- * $Id: KnownProblems.html,v 1.39 2009-10-19 14:05:49 norume Exp $
++ * $Id: KnownProblems.html,v 1.39 2009-10-19 14:05:49 norume Exp $
   */
  
  #include &lt;string.h&gt;
@@ -236,8 +252,7 @@ diff -u -r1.27 -r1.28
 +    }
  
      asynPrint(pasynUser, ASYN_TRACE_FLOW,
-               "Open connection to %s\n", tty-&gt;serialDeviceName);
-</pre>
+               "Open connection to %s\n", tty-&gt;serialDeviceName);</pre>
   <h2 style="text-align: center">
     Release 4-3</h2>
   <h3>

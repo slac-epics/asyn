@@ -5,12 +5,6 @@
 #include <epicsMutex.h>
 #include <asynStandardInterfaces.h>
 
-/** Structure that is used to associate an enum value in pasynUser->reason with a drvUser string */
-typedef struct {
-    int param;
-    const char *paramString;
-} asynParamString_t;
-
 #ifdef __cplusplus
 
 /** Masks for each of the asyn standard interfaces */
@@ -18,7 +12,7 @@ typedef struct {
 #define asynDrvUserMask         0x00000002
 #define asynOptionMask          0x00000004
 #define asynInt32Mask           0x00000008
-#define asyUInt32DigitalMask    0x00000010
+#define asynUInt32DigitalMask   0x00000010
 #define asynFloat64Mask         0x00000020
 #define asynOctetMask           0x00000040
 #define asynInt8ArrayMask       0x00000080
@@ -31,24 +25,51 @@ typedef struct {
 
 /** Parameter data types for the parameter library */
 typedef enum { 
-    paramUndef,     /**< Undefined */
-    paramInt,       /**< int  parameter */
-    paramDouble,    /**< double parameter */ 
-    paramString     /**< Dynamic length string parameter */
-} paramType;
+    asynParamUndefined,     /**< Undefined */
+    asynParamInt32, 
+    asynParamUInt32Digital,
+    asynParamFloat64,
+    asynParamOctet,
+    asynParamInt8Array,
+    asynParamInt16Array,
+    asynParamInt32Array,
+    asynParamFloat32Array,
+    asynParamFloat64Array,
+    asynParamGenericPointer
+} asynParamType;
 
 /** Structure for storing parameter value in parameter library */
 typedef struct
 {
-    paramType type;     /**< Parameter data type */
+    asynParamType type; /**< Parameter data type */
+    char *name;         /**< Parameter name */
+    bool valueDefined;
+    epicsUInt32 uInt32Mask;
+    epicsUInt32 uInt32InterruptMask;
+    epicsUInt32 uInt32InterruptReason;
     /** Union for parameter value */
     union
     {
-        double dval;
-        int    ival;
-        char  *sval;
+        epicsInt32   ival;
+        epicsUInt32  uival;
+        epicsFloat64 dval;
+        char         *sval;
+        epicsInt8     *pi8;
+        epicsInt16    *pi16;
+        epicsInt32    *pi32;
+        epicsFloat32  *pf32;
+        epicsFloat64  *pf64;
+        void         *pgp;
     } data;
 } paramVal;
+
+
+/* Synonyms for some unused asyn error codes for use by parameter library */
+#define asynParamAlreadyExists  asynTimeout
+#define asynParamNotFound       asynOverflow
+#define asynParamWrongType      asynDisconnected
+#define asynParamBadIndex       asynDisabled
+#define asynParamUndefined      asynError
 
 /** Class to support parameter library (also called parameter list); 
   * set and get values indexed by parameter number (pasynUser->reason)
@@ -57,24 +78,33 @@ typedef struct
   * and dynamic-length strings. */
 class paramList {
 public:
-    paramList(int startVal, int nVals, asynStandardInterfaces *pasynInterfaces);
+    paramList(int nVals, asynStandardInterfaces *pasynInterfaces);
     ~paramList();
+    asynStatus createParam(const char *name, asynParamType type, int *index);
+    asynStatus findParam(const char *name, int *index);
+    asynStatus getName(int index, const char **name);
     asynStatus setInteger(int index, int value);
+    asynStatus setUInt32(int index, epicsUInt32 value, epicsUInt32 mask);
     asynStatus setDouble(int index, double value);
     asynStatus setString(int index, const char *string);
     asynStatus getInteger(int index, int *value);
+    asynStatus getUInt32(int index, epicsUInt32 *value, epicsUInt32 mask);
     asynStatus getDouble(int index, double *value);
     asynStatus getString(int index, int maxChars, char *value);
+    asynStatus setUInt32Interrupt(int index, epicsUInt32 mask, interruptReason reason);
+    asynStatus clearUInt32Interrupt(int index, epicsUInt32 mask);
+    asynStatus getUInt32Interrupt(int index, epicsUInt32 *mask, interruptReason reason);
     asynStatus callCallbacks(int addr);
     asynStatus callCallbacks();
-    void report();
+    void report(FILE *fp, int details);
 
 private:    
     asynStatus setFlag(int index);
-    asynStatus intCallback(int command, int addr, int value);
-    asynStatus doubleCallback(int command, int addr, double value);
-    asynStatus stringCallback(int command, int addr, char *value);
-    int startVal;
+    asynStatus int32Callback(int command, int addr, epicsInt32 value);
+    asynStatus uint32Callback(int command, int addr, epicsUInt32 value, epicsUInt32 interruptMask);
+    asynStatus float64Callback(int command, int addr, epicsFloat64 value);
+    asynStatus octetCallback(int command, int addr, char *value);
+    int nextParam;
     int nVals;
     int nFlags;
     asynStandardInterfaces *pasynInterfaces;
@@ -91,16 +121,21 @@ public:
     virtual ~asynPortDriver();
     virtual asynStatus lock();
     virtual asynStatus unlock();
-    virtual asynStatus getAddress(asynUser *pasynUser, const char *functionName, int *address); 
+    virtual asynStatus getAddress(asynUser *pasynUser, int *address); 
     virtual asynStatus readInt32(asynUser *pasynUser, epicsInt32 *value);
     virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
+    virtual asynStatus readUInt32Digital(asynUser *pasynUser, epicsUInt32 *value, epicsUInt32 mask);
+    virtual asynStatus writeUInt32Digital(asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask);
+    virtual asynStatus setInterruptUInt32Digital(asynUser *pasynUser, epicsUInt32 mask, interruptReason reason);
+    virtual asynStatus clearInterruptUInt32Digital(asynUser *pasynUser, epicsUInt32 mask);
+    virtual asynStatus getInterruptUInt32Digital(asynUser *pasynUser, epicsUInt32 *mask, interruptReason reason);
     virtual asynStatus getBounds(asynUser *pasynUser, epicsInt32 *low, epicsInt32 *high);
     virtual asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
     virtual asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
     virtual asynStatus readOctet(asynUser *pasynUser, char *value, size_t maxChars,
-                         size_t *nActual, int *eomReason);
+                                        size_t *nActual, int *eomReason);
     virtual asynStatus writeOctet(asynUser *pasynUser, const char *value, size_t maxChars,
-                          size_t *nActual);
+                                        size_t *nActual);
     virtual asynStatus readInt8Array(asynUser *pasynUser, epicsInt8 *value, 
                                         size_t nElements, size_t *nIn);
     virtual asynStatus writeInt8Array(asynUser *pasynUser, epicsInt8 *value,
@@ -134,13 +169,8 @@ public:
     virtual asynStatus readGenericPointer(asynUser *pasynUser, void *pointer);
     virtual asynStatus writeGenericPointer(asynUser *pasynUser, void *pointer);
     virtual asynStatus doCallbacksGenericPointer(void *pointer, int reason, int addr);
-    virtual asynStatus findParam(asynParamString_t *paramTable, int numParams, const char *paramName, 
-                                 int *param);
     virtual asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, 
                                      const char **pptypeName, size_t *psize);
-    virtual asynStatus drvUserCreateParam(asynUser *pasynUser, const char *drvInfo, 
-                                          const char **pptypeName, size_t *psize,
-                                          asynParamString_t *paramTable, int numParams);
     virtual asynStatus drvUserGetType(asynUser *pasynUser,
                                         const char **pptypeName, size_t *psize);
     virtual asynStatus drvUserDestroy(asynUser *pasynUser);
@@ -148,21 +178,32 @@ public:
     virtual asynStatus connect(asynUser *pasynUser);
     virtual asynStatus disconnect(asynUser *pasynUser);
    
+    virtual asynStatus createParam(const char *name, asynParamType type, int *index);
+    virtual asynStatus createParam(int list, const char *name, asynParamType type, int *index);
+    virtual asynStatus findParam(const char *name, int *index);
+    virtual asynStatus findParam(int list, const char *name, int *index);
+    virtual asynStatus getParamName(int index, const char **name);
+    virtual asynStatus getParamName(int list, int index, const char **name);
     virtual asynStatus setIntegerParam(int index, int value);
     virtual asynStatus setIntegerParam(int list, int index, int value);
+    virtual asynStatus setUIntDigitalParam(int index, epicsUInt32 value, epicsUInt32 mask);
+    virtual asynStatus setUIntDigitalParam(int list, int index, epicsUInt32 value, epicsUInt32 mask);
     virtual asynStatus setDoubleParam(int index, double value);
     virtual asynStatus setDoubleParam(int list, int index, double value);
     virtual asynStatus setStringParam(int index, const char *value);
     virtual asynStatus setStringParam(int list, int index, const char *value);
     virtual asynStatus getIntegerParam(int index, int * value);
     virtual asynStatus getIntegerParam(int list, int index, int * value);
+    virtual asynStatus getUIntDigitalParam(int index, epicsUInt32 *value, epicsUInt32 mask);
+    virtual asynStatus getUIntDigitalParam(int list, int index, epicsUInt32 *value, epicsUInt32 mask);
     virtual asynStatus getDoubleParam(int index, double * value);
     virtual asynStatus getDoubleParam(int list, int index, double * value);
     virtual asynStatus getStringParam(int index, int maxChars, char *value);
     virtual asynStatus getStringParam(int list, int index, int maxChars, char *value);
     virtual asynStatus callParamCallbacks();
+    virtual asynStatus callParamCallbacks(int addr);
     virtual asynStatus callParamCallbacks(int list, int addr);
-    virtual void reportParams();
+    virtual void reportParams(FILE *fp, int details);
 
     char *portName;         /**< The name of this asyn port */
 
