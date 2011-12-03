@@ -14,6 +14,15 @@
 #CROSS_COMPILER_TARGET_ARCHS = RTEMS-beatnik
 #CROSS_COMPILER_TARGET_ARCHS = RTEMS-uC5282
 #CROSS_COMPILER_TARGET_ARCHS = RTEMS-pc586
+#CROSS_COMPILER_TARGET_ARCHS = vxWorks-ppc604_altivec
+# MVME3100
+#CROSS_COMPILER_TARGET_ARCHS = vxWorks-mpc8540
+# MVME4100 
+#CROSS_COMPILER_TARGET_ARCHS = vxWorks-mpc8548
+# Intel Core I7 
+#CROSS_COMPILER_TARGET_ARCHS = vxWorks-pentium4
+
+#CROSS_COMPILER_TARGET_ARCHS = RTEMS-beatnik RTEMS-mvme3100 RTEMS-uC5282 vxWorks-ppc604_long vxWorks-mpc8540 vxWorks-mpc8548
 
 # Set this when your IOC and the host use different paths
 # to access the application. This will be needed to boot
