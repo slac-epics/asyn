@@ -27,6 +27,13 @@
 # 
 #==============================================================
 #
+asyn-R4-18-lcls1:     Updated with asyn RELEASE 4-18
+                      edm files are now under the opi directory
+                      I removed both the top level edm and medm
+                      directories.  There are also display files
+                      for boy as well. Boy is part of CSS
+                      The lcls suffix indicates changes specific
+                      to SLAC ICD Software Department 
 asyn-R4-17-RC1-lcls1: Updated with asyn RELEASE 4-17-RC1
                       Changes were needed for the new motor software
                       READ Vendor's Release notes in the documentation
