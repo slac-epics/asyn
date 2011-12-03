@@ -20,6 +20,7 @@ USR_INCLUDES_cygwin32 += -I/usr/include/tirpc
 ifeq (vxWorks,$(findstring vxWorks, $(T_A)))
 CODE_CXXFLAGS=
 endif
+USR_CXXFLAGS_solaris-sparc=-instances=global
 
 LIBRARY_IOC += asyn
 asyn_LIBS += $(EPICS_BASE_IOC_LIBS)
@@ -166,20 +167,26 @@ asyn_SRCS += boSRQonOff.c
 include $(TOP)/configure/RULES
 
 ifdef T_A
-ifeq ($(OS_CLASS),vxWorks)
-vxi11core_xdr.c: ../vxi11/rpc/vxi11core_xdr.c
-	cp ../vxi11/rpc/*.[ch] .
+ifneq ($(findstring $(OS_CLASS),vxWorks RTEMS),)
+
+vxi11core.h vxi11core_xdr.c vxi11intr.h vxi11intr_xdr.c : \
+% : ../vxi11/rpc/%
+	cp $< $@
+vxi11core_xdr.o: vxi11core.h
+vxi11intr_xrd.o: vxi11intr.h
+
 else
-ifeq ($(OS_CLASS),RTEMS)
-vxi11core_xdr.c: ../vxi11/rpc/vxi11core_xdr.c
-	cp ../vxi11/rpc/*.[ch] .
-else
+
+.SECONDARY: vxi11core_xdr.c vxi11intr_xdr.c
+
+RPCGEN_FLAGS_darwin = -C
 RPCGEN_FLAGS_solaris = -M
-vxi11core_xdr.c drvVxi11.c: ../vxi11/vxi11core.rpcl ../vxi11/vxi11intr.rpcl
-	cp ../vxi11/vxi11core.rpcl .
-	cp ../vxi11/vxi11intr.rpcl .
-	rpcgen $(RPCGEN_FLAGS_$(OS_CLASS)) vxi11core.rpcl
-	rpcgen $(RPCGEN_FLAGS_$(OS_CLASS)) vxi11intr.rpcl
+%.h %_xdr.c: ../vxi11/%.rpcl
+	cp $< .
+	rpcgen $(RPCGEN_FLAGS_$(OS_CLASS)) $*.rpcl
+
 endif
+
 endif
-endif
+
+$(ASYN)/vxi11/drvVxi11.c: vxi11intr.h

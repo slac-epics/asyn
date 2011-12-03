@@ -2,7 +2,7 @@
  * RFC 2117 support for remote serial ports
  * 
  * Author: W. Eric Norum
- * "$Date: 2011/05/11 15:51:43 $ (UTC)"
+ * "$Date: 2011/01/12 00:13:59 $ (UTC)"
  */
 
 /************************************************************************\
@@ -243,7 +243,6 @@ flushIt(void *ppvt, asynUser *pasynUser)
     interposePvt *pinterposePvt = (interposePvt *)ppvt;
 
     return pinterposePvt->pasynOctetDrv->flush(pinterposePvt->drvPvt, pasynUser);
-    return(asynSuccess);
 }
 
 static asynStatus

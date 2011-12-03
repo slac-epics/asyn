@@ -18,7 +18,7 @@
     March 26, 2008 \
 */ \
  \
- \
+ \
 typedef struct devAsynWfPvt{ \
     dbCommon        *pr; \
     asynUser        *pasynUser; \
@@ -70,7 +70,7 @@ epicsExportAddress(dset, DSET_IN); \
 epicsExportAddress(dset, DSET_OUT); \
 \
 static char *driverName = DRIVER_NAME; \
- \
+ \
 static long initCommon(dbCommon *pr, DBLINK *plink,  \
     userCallback callback, INTERRUPT interruptCallback) \
 { \
@@ -117,8 +117,8 @@ static long initCommon(dbCommon *pr, DBLINK *plink,  \
             pPvt->userParam,0,0); \
         if(status!=asynSuccess) { \
             errlogPrintf( \
-                "devAsynLong::initCommon, %s drvUserInit failed %s\n", \
-                pr->name, pasynUser->errorMessage); \
+                "%s::initCommon, %s drvUserCreate failed %s\n", \
+                driverName, pr->name, pasynUser->errorMessage); \
             goto bad; \
         } \
     } \
@@ -187,7 +187,7 @@ static long initWfArrayOut(waveformRecord *pwf) \
 static long initWfArrayIn(waveformRecord *pwf) \
 { return initCommon((dbCommon *)pwf, (DBLINK *)&pwf->inp,  \
     callbackWf, interruptCallbackInput); }  \
- \
+ \
 static long processCommon(dbCommon *pr) \
 { \
     devAsynWfPvt *pPvt = (devAsynWfPvt *)pr->dpvt; \
@@ -223,7 +223,7 @@ static void callbackWfOut(asynUser *pasynUser) \
     asynPrint(pasynUser, ASYN_TRACEIO_DEVICE, \
               "%s %s::callbackWfOut\n", pwf->name, driverName); \
     status = pPvt->pArray->write(pPvt->arrayPvt, \
-        pPvt->pasynUser, pwf->bptr, pwf->nelm); \
+        pPvt->pasynUser, pwf->bptr, pwf->nord); \
     if (status == asynSuccess) { \
         pwf->udf=0; \
     } else { \
@@ -276,7 +276,7 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,  \
     pPvt->nord = len; \
     scanIoRequest(pPvt->ioScanPvt); \
 } \
- \
+ \
 static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,  \
                 EPICS_TYPE *value, size_t len) \
 { \

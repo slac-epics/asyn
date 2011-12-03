@@ -51,10 +51,10 @@ void asynPortDriver::callbackTask()
 
 
 /** Constructor for paramList class.
-  * \param[in] nVals Number of parameters in the list.
+  * \param[in] nValues Number of parameters in the list.
   * \param[in] pasynInterfaces Pointer to asynStandardInterfaces structure, used for callbacks */
-paramList::paramList(int nVals, asynStandardInterfaces *pasynInterfaces)
-    : nextParam(0), nVals(nVals), nFlags(0), pasynInterfaces(pasynInterfaces)
+paramList::paramList(int nValues, asynStandardInterfaces *pasynInterfaces)
+    : nextParam(0), nVals(nValues), nFlags(0), pasynInterfaces(pasynInterfaces)
 {
     vals = (paramVal *) calloc(nVals, sizeof(paramVal));
     flags = (int *) calloc(nVals, sizeof(int));
@@ -128,20 +128,29 @@ asynStatus paramList::setInteger(int index, int value)
 /** Sets the value for an integer in the parameter library.
   * \param[in] index The parameter number 
   * \param[in] value Value to set.
-  * \param[in] mask Mask to use when setting the value.
+  * \param[in] valueMask Mask to use when setting the value.
+  * \param[in] interruptMask Mask of bits that have changed even if the value has not changed
   * \return Returns asynParamBadIndex if the index is not valid or asynParamWrongType if the parameter type is not asynParamUInt32Digital. */
-asynStatus paramList::setUInt32(int index, epicsUInt32 value, epicsUInt32 mask)
+asynStatus paramList::setUInt32(int index, epicsUInt32 value, epicsUInt32 valueMask, epicsUInt32 interruptMask)
 {
+    epicsUInt32 oldValue;
+    
     if (index < 0 || index >= this->nVals) return asynParamBadIndex;
     if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    if ((!this->vals[index].valueDefined) || (this->vals[index].data.uival != value))
-    {
-        this->vals[index].valueDefined = 1;
-        setFlag(index);
-        /* Set any bits that are set in the value and the mask */
-        this->vals[index].data.uival |= (value & mask);
-        /* Clear bits that are clear in the value and set in the mask */
-        this->vals[index].data.uival &= (value | ~mask);
+    this->vals[index].valueDefined = 1;
+    oldValue = this->vals[index].data.uival;
+    /* Set any bits that are set in the value and the mask */
+    this->vals[index].data.uival |= (value & valueMask);
+    /* Clear bits that are clear in the value and set in the mask */
+    this->vals[index].data.uival &= (value | ~valueMask);
+    if (this->vals[index].data.uival != oldValue) {
+      /* Set the bits in the callback mask that have changed */
+      this->vals[index].uInt32CallbackMask |= (this->vals[index].data.uival ^ oldValue);
+      setFlag(index);
+    }
+    if (interruptMask) {
+      this->vals[index].uInt32CallbackMask |= interruptMask;
+      setFlag(index);
     }
     return asynSuccess;
 }
@@ -234,8 +243,18 @@ asynStatus paramList::setUInt32Interrupt(int index, epicsUInt32 mask, interruptR
 {
     if (index < 0 || index >= this->nVals) return asynParamBadIndex;
     if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    this->vals[index].uInt32InterruptMask = mask;
-    this->vals[index].uInt32InterruptReason = reason;
+    switch (reason) {
+      case interruptOnZeroToOne:
+        this->vals[index].uInt32RisingMask = mask;
+        break;
+      case interruptOnOneToZero:
+        this->vals[index].uInt32FallingMask = mask;
+        break;
+      case interruptOnBoth:
+        this->vals[index].uInt32RisingMask = mask;
+        this->vals[index].uInt32FallingMask = mask;
+        break;
+    }
     return asynSuccess;
 }
 
@@ -248,7 +267,8 @@ asynStatus paramList::clearUInt32Interrupt(int index, epicsUInt32 mask)
 {
     if (index < 0 || index >= this->nVals) return asynParamBadIndex;
     if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    this->vals[index].uInt32InterruptMask = mask;
+    this->vals[index].uInt32RisingMask &= ~mask;
+    this->vals[index].uInt32FallingMask &= ~mask;
     return asynSuccess;
 }
 
@@ -262,7 +282,17 @@ asynStatus paramList::getUInt32Interrupt(int index, epicsUInt32 *mask, interrupt
 {
     if (index < 0 || index >= this->nVals) return asynParamBadIndex;
     if (this->vals[index].type != asynParamUInt32Digital) return asynParamWrongType;
-    *mask = this->vals[index].uInt32InterruptMask;
+    switch (reason) {
+      case interruptOnZeroToOne:
+        *mask = this->vals[index].uInt32RisingMask;
+        break;
+      case interruptOnOneToZero:
+        *mask = this->vals[index].uInt32FallingMask;
+        break;
+      case interruptOnBoth:
+        *mask = this->vals[index].uInt32RisingMask | this->vals[index].uInt32FallingMask;
+        break;
+    }
     return asynSuccess;
 }
 
@@ -435,7 +465,8 @@ asynStatus paramList::callCallbacks(int addr)
                 status = int32Callback(index, addr, this->vals[index].data.ival);
                 break;
             case asynParamUInt32Digital:
-                status = uint32Callback(index, addr, this->vals[index].data.uival, this->vals[index].uInt32InterruptMask);
+                status = uint32Callback(index, addr, this->vals[index].data.uival, this->vals[index].uInt32CallbackMask);
+                this->vals[index].uInt32CallbackMask = 0;
                 break;
             case asynParamFloat64:
                 status = float64Callback(index, addr, this->vals[index].data.dval);
@@ -479,8 +510,9 @@ void paramList::report(FILE *fp, int details)
                 break;
             case asynParamUInt32Digital:
                 if (this->vals[i].valueDefined)
-                    fprintf(fp, "Parameter %d type=asynUInt32Digital, name=%s, value=%u, mask=%u\n", i, this->vals[i].name, 
-                        this->vals[i].data.uival, this->vals[i].uInt32Mask );
+                    fprintf(fp, "Parameter %d type=asynUInt32Digital, name=%s, value=0x%x, risingMask=0x%x, fallingMask=0x%x, callbackMask=0x%x\n", 
+                        i, this->vals[i].name, this->vals[i].data.uival, 
+                        this->vals[i].uInt32RisingMask, this->vals[i].uInt32FallingMask, this->vals[i].uInt32CallbackMask );
                 else
                     fprintf(fp, "Parameter %d type=asynUInt32Digital, name=%s, value is undefined\n", i, this->vals[i].name);
                 break;
@@ -682,27 +714,50 @@ asynStatus asynPortDriver::setIntegerParam(int list, int index, int value)
 }
 
 /** Sets the value for a UInt32Digital in the parameter library.
-  * Calls setUIntDigitalParam(0, index, value) i.e. for parameter list 0.
+  * Calls setUIntDigitalParam(0, index, value, valueMask, 0) i.e. for parameter list 0.
   * \param[in] index The parameter number 
   * \param[in] value Value to set. 
-  * \param[in] mask The mask to use when setting the value. */
-asynStatus asynPortDriver::setUIntDigitalParam(int index, epicsUInt32 value, epicsUInt32 mask)
+  * \param[in] valueMask The mask to use when setting the value. */
+asynStatus asynPortDriver::setUIntDigitalParam(int index, epicsUInt32 value, epicsUInt32 valueMask)
 {
-    return this->setUIntDigitalParam(0, index, value, mask);
+    return this->setUIntDigitalParam(0, index, value, valueMask, 0);
+}
+
+/** Sets the value for a UInt32Digital in the parameter library.
+  * Calls paramList::setUIntDigitalParam(list, index, value, valueMask, 0) for the parameter list indexed by list.
+  * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
+  * \param[in] index The parameter number 
+  * \param[in] value Value to set. 
+  * \param[in] valueMask The mask to use when setting the value. */
+asynStatus asynPortDriver::setUIntDigitalParam(int list, int index, epicsUInt32 value, epicsUInt32 valueMask)
+{
+    return this->setUIntDigitalParam(list, index, value, valueMask, 0);
+}
+
+/** Sets the value for a UInt32Digital in the parameter library.
+  * Calls setUIntDigitalParam(0, index, value, valueMask, interruptMask) i.e. for parameter list 0.
+  * \param[in] index The parameter number 
+  * \param[in] value Value to set. 
+  * \param[in] valueMask The mask to use when setting the value. 
+  * \param[in] interruptMask A mask that indicates which bits have changed even if the value is the same, so callbacks will be done */
+asynStatus asynPortDriver::setUIntDigitalParam(int index, epicsUInt32 value, epicsUInt32 valueMask, epicsUInt32 interruptMask)
+{
+    return this->setUIntDigitalParam(0, index, value, valueMask, interruptMask);
 }
 
 /** Sets the value for a UInt32Digital in the parameter library.
   * Calls paramList::setInteger (index, value) for the parameter list indexed by list.
   * \param[in] list The parameter list number.  Must be < maxAddr passed to asynPortDriver::asynPortDriver.
   * \param[in] index The parameter number 
-  * \param[in] value Value to set. 
-  * \param[in] mask The mask to use when setting the value. */
-asynStatus asynPortDriver::setUIntDigitalParam(int list, int index, epicsUInt32 value, epicsUInt32 mask)
+  * \param[in] value Value to set 
+  * \param[in] valueMask The mask to use when setting the value. 
+  * \param[in] interruptMask A mask that indicates which bits have changed even if the value is the same, so callbacks will be done */
+asynStatus asynPortDriver::setUIntDigitalParam(int list, int index, epicsUInt32 value, epicsUInt32 valueMask, epicsUInt32 interruptMask)
 {
     asynStatus status;
     static const char *functionName = "setUIntDigitalParam";
     
-    status = this->params[list]->setUInt32(index, value, mask);
+    status = this->params[list]->setUInt32(index, value, valueMask, interruptMask);
     if (status) reportSetParamErrors(status, index, list, functionName);
     return(status);
 }
@@ -1046,9 +1101,16 @@ void reportInterrupt(FILE *fp, void *interruptPvt, const char *interruptTypeStri
         pnode = (interruptNode *)ellFirst(pclientList);
         while (pnode) {
             interruptType *pInterrupt = (interruptType *)pnode->drvPvt;
-            fprintf(fp, "    %s callback client address=%p, addr=%d, reason=%d, userPvt=%p\n",
-                    interruptTypeString, pInterrupt->callback, pInterrupt->addr,
-                    pInterrupt->pasynUser->reason, pInterrupt->userPvt);
+            if (strcmp(interruptTypeString, "uint32") == 0) {
+                asynUInt32DigitalInterrupt *pInt = (asynUInt32DigitalInterrupt *) pInterrupt;
+                fprintf(fp, "    %s callback client address=%p, addr=%d, reason=%d, mask=0x%x, userPvt=%p\n",
+                        interruptTypeString, pInt->callback, pInt->addr,
+                        pInt->pasynUser->reason, pInt->mask, pInt->userPvt);
+            } else {
+                fprintf(fp, "    %s callback client address=%p, addr=%d, reason=%d, userPvt=%p\n",
+                        interruptTypeString, pInterrupt->callback, pInterrupt->addr,
+                        pInterrupt->pasynUser->reason, pInterrupt->userPvt);
+            }
             pnode = (interruptNode *)ellNext(&pnode->node);
         }
         pasynManager->interruptEnd(interruptPvt);
@@ -2255,8 +2317,8 @@ static asynDrvUser ifaceDrvUser = {
 
 
 /** Constructor for the asynPortDriver class.
-  * \param[in] portName The name of the asyn port driver to be created.
-  * \param[in] maxAddr The maximum  number of asyn addr addresses this driver supports.
+  * \param[in] portNameIn The name of the asyn port driver to be created.
+  * \param[in] maxAddrIn The maximum  number of asyn addr addresses this driver supports.
                Often it is 1 (which is the minimum), but some drivers, for example a 
 			   16-channel D/A or A/D would support values &gt; 1. 
 			   This controls the number of parameter tables that are created.
@@ -2275,7 +2337,7 @@ static asynDrvUser ifaceDrvUser = {
                If it is 0 then the default value of epicsThreadGetStackSize(epicsThreadStackMedium)
                will be assigned by asynManager.
   */
-asynPortDriver::asynPortDriver(const char *portName, int maxAddr, int paramTableSize, int interfaceMask, int interruptMask,
+asynPortDriver::asynPortDriver(const char *portNameIn, int maxAddrIn, int paramTableSize, int interfaceMask, int interruptMask,
                                int asynFlags, int autoConnect, int priority, int stackSize)
 {
     asynStatus status;
@@ -2287,16 +2349,15 @@ asynPortDriver::asynPortDriver(const char *portName, int maxAddr, int paramTable
     pInterfaces = &this->asynStdInterfaces;
     memset(pInterfaces, 0, sizeof(asynStdInterfaces));
        
-    this->portName = epicsStrDup(portName);
-    if (maxAddr < 1) maxAddr = 1;
-    this->maxAddr = maxAddr;
+    this->portName = epicsStrDup(portNameIn);
+    if (maxAddrIn < 1) maxAddrIn = 1;
+    this->maxAddr = maxAddrIn;
     interfaceMask |= asynCommonMask;  /* Always need the asynCommon interface */
 
     /* Create the epicsMutex for locking access to data structures from other threads */
     this->mutexId = epicsMutexCreate();
     if (!this->mutexId) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s::%s epicsMutexCreate failure\n", driverName, functionName);
+        printf("%s::%s ERROR: epicsMutexCreate failure\n", driverName, functionName);
         return;
     }
 
