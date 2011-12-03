@@ -22,7 +22,7 @@
 /* Version number names similar to those provide by base
  * These macros are always numeric */
 #define ASYN_VERSION       4
-#define ASYN_REVISION     16
+#define ASYN_REVISION     18
 #define ASYN_MODIFICATION  0
 
 #ifdef __cplusplus
@@ -212,7 +212,7 @@ epicsShareExtern asynTrace *pasynTrace;
 #if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
 #define asynPrint(pasynUser,reason, ...) \
    ((pasynTrace->getTraceMask((pasynUser))&(reason)) \
-    ? pasynTrace->print((pasynUser),(reason),__VAR_ARGS__) \
+    ? pasynTrace->print((pasynUser),(reason),__VA_ARGS__) \
     : 0)
 #elif defined(__GNUC__)
 #define asynPrint(pasynUser,reason,format...) \
@@ -226,7 +226,7 @@ epicsShareExtern asynTrace *pasynTrace;
 #if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
 #define asynPrintIO(pasynUser,reason,buffer,len, ...) \
    ((pasynTrace->getTraceMask((pasynUser))&(reason)) \
-    ? pasynTrace->printIO((pasynUser),(reason),(buffer),(len),__VAR_ARGS__) \
+    ? pasynTrace->printIO((pasynUser),(reason),(buffer),(len),__VA_ARGS__) \
     : 0)
 #elif defined(__GNUC__)
 #define asynPrintIO(pasynUser,reason,buffer,len,format...) \

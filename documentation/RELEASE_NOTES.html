@@ -13,16 +13,61 @@
   <hr />
   <div style="text-align: center">
     <h2>
+      Release 4-18</h2>
+    <h2>
+      November 2, 2011</h2>
+  </div>
+  <h3>
+    Miscellaneous</h3>
+  <p>
+    Changes to avoid compiler warnings on 64-bit Darwin.</p>
+  <p>
+    Changes to avoid compiler warnings and errors on older Solaris compiler.</p>
+  <p>
+    Changed non-standard __VAR_ARGS__ to __VA_ARGS__ in asynPrint macro.</p>
+  <p>
+    Added titles to EDM screens.</p>
+  <p>
+    Added CSS BOY screens.</p>
+  <p>
+    Fixed build problem. It was rebuilding the VXI11 code with rpcgen each time make
+    was run, even if nothing had changed.</p>
+  <h3>
+    asynPortDriver</h3>
+  <p>
+    Cleaned up logic for callbacks on asynUInt32Digital interface. It was not doing
+    callbacks if the value had not changed but an interrupt had occured for bits in
+    the mask. This would happen when interrupts were only enabled on the falling or
+    rising edges but not both. Added an additional form of setUIntDigitalParam that
+    takes an interruptMask argument. In the previous releases drivers were calling setUInt32Interrupt
+    for callbacks which is not correct. That function should only be called by device
+    support to tell the driver which interrupts to recognize. These problems made the
+    quadEM not work correctly with the ipUnidig.</p>
+  <h3>
+    drvAsynSerialPort</h3>
+  <p>
+    Bug fix on WIN32. It was waiting forever when timeout=0 when it should return whatever
+    characters are available without waiting at all.</p>
+  <div style="text-align: center">
+    <h2>
       Release 4-17</h2>
     <h2>
-      March XXX, 2011</h2>
+      August 3, 2011</h2>
   </div>
   <h3>
     asynRecord</h3>
   <p>
     Fixed asynRecord.dbd to include promptgroup for fields that need it. Removed the
-    SOCK field; the record no longer supports creating sockets, which can easily be
-    done with the iocsh drvAsynIPPortConfigure command.</p>
+    SOCK field and asynSocketSetup.adl; the record no longer supports creating sockets,
+    which can easily be done with the iocsh drvAsynIPPortConfigure command.</p>
+  <p>
+    Added IXON, IXOFF, and IXANY fields for new XON/XOFF support on serial ports. These
+    fields were added to the asynSerialPortSetup.adl medm screen.</p>
+  <h3>
+    devAsynXXXArray</h3>
+  <p>
+    For waveform output records the device support was always writing NELM elements,
+    rather than NORD elements.</p>
   <h3>
     asynInterposeCom.c</h3>
   <p>
@@ -37,11 +82,44 @@
   <h3>
     asynPortDriver</h3>
   <p>
-    Added a global function, findAsynPortDriver(const char *portName), that returns a
-    pointer to an asynPortDriver object given the asyn port name.</p>
+    Added a global function, findAsynPortDriver(const char *portName), that returns
+    a pointer to an asynPortDriver object given the asyn port name.</p>
   <p>
     Added 3 new asynPortDriver methods: setUInt32DigitalInterrupt, clearUInt32Interrupt,
     getUInt32Interrupt. These were needed to complete the asynUInt32Digital support.</p>
+  <h3>
+    asynShellCommands</h3>
+  <p>
+    The asynOctetSetInputEos, asynOctetSetOutputEos, asynOctetShowInputEos and asynOctetShowOutputEos
+    commands now take effect even if the port is not connected. This makes startup scripts
+    more robust in the face of devices that are not accessible at IOC startup. Removed
+    the unused "drvInfo" parameter from each of these functions.</p>
+  <h3>
+    drvAsynIPPort</h3>
+  <p>
+    Host name lookup is now deferred until port connection time. This makes startup
+    scripts robust in the face of a device that is offline at IOC startup and has been
+    offline for so long that it's DNS entry has been deleted.</p>
+  <p>
+    Prevent reconnects during IOC shutdown. The IP Port exithandler runs before record
+    scanning stops. In that interval, if a record is scanned then it will trigger a
+    reconnect, and new connection can be shutdown without sending data, or without waiting
+    for a reply. Some embedded TCP/IP stacks have problems dealing with this. Thanks
+    to Michael Davidsaver for this fix.</p>
+  <h3>
+    drvAsynSerialPort</h3>
+  <p>
+    Added support for local serial ports on Windows, i.e.win32-x86 and windows-x64 architectures.
+    Previously Windows local serial ports were only supported on the cygwin-x86 architecture.</p>
+  <p>
+    Added support for serial line software handshake flags (ixon/ixoff/xany) on most
+    architectures (e.g. Linux, Cygwin, Darwin, WIN32; see: man stty) and vxWorks (ixon
+    only). Thanks to Dirk Zimoch for this.</p>
+  <h3>
+    Miscelleaneous</h3>
+  <p>
+    Changed asyn/Makefile to fix build dependencies for rpcgen of vxi11. Thanks to Michael
+    Davidsaver for this fix.</p>
   <div style="text-align: center">
     <h2>
       Release 4-16</h2>
@@ -100,8 +178,7 @@
     Changes to allow building on Cygwin 1.7.x or 1.5.x; replaced rpc with $(CYGWIN_RPC_LIB),
     which allows it to link with rpc on 1.5.x and tirpc on 1.7.x. You need to add one
     of the following 2 lines to <code>base/configure/os/CONFIG_SITE.cygwin-x86.cygwin-x86</code></p>
-  <pre>
-    For Cygwin 1.7.x:
+  <pre>    For Cygwin 1.7.x:
     CYGWIN_RPC_LIB = tirpc
 
     For Cygwin 1.5.x
