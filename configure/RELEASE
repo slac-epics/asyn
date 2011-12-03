@@ -21,7 +21,7 @@ EPICS_MODULES=$(MODULES_SITE_TOP)
 # IOC apps or other Support apps
 # =============================================================
 IPAC_MODULE_VERSION=ipac-R2-11-lcls1
-SNCSEQ_MODULE_VERSION=seq-R2-0-11-lcls4
+SNCSEQ_MODULE_VERSION=seq-R2-1-3-lcls1
 
 # ============================================================
 #  IPAC release V2-7 or later is required.
