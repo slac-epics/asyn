@@ -27,6 +27,8 @@
 # 
 #==============================================================
 #
+asyn-R4-18-lcls1_OLD_IPAC: Using ipac-R2-8-lcls8. This needs to be cleaned up. 
+
 asyn-R4-18-lcls1:     Updated with asyn RELEASE 4-18
                       edm files are now under the opi directory
                       I removed both the top level edm and medm
