@@ -27,6 +27,11 @@
 # 
 #==============================================================
 #
+asyn-R4-18-lcls2: DO not use the sequencer; which means do not build testIPServerApp; 
+                  don't need this for production use. 
+                  That is only an example IOC application for testing. 
+                  Create a new release tag for this change = asyn-R4-18-lcls2
+
 asyn-R4-18-lcls1_OLD_IPAC: Using ipac-R2-8-lcls8. This needs to be cleaned up. 
 
 asyn-R4-18-lcls1:     Updated with asyn RELEASE 4-18

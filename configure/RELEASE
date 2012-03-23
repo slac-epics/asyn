@@ -21,14 +21,14 @@ EPICS_MODULES=$(MODULES_SITE_TOP)
 # IOC apps or other Support apps
 # =============================================================
 IPAC_MODULE_VERSION=ipac-R2-8-lcls8
-SNCSEQ_MODULE_VERSION=seq-R2-1-3-lcls1
+#SNCSEQ_MODULE_VERSION=seq-R2-1-3-lcls1
 
 # ============================================================
 #  IPAC release V2-7 or later is required.
 # Carrier card support for acromag and xycom
 # ============================================================
 IPAC=$(EPICS_MODULES)/ipac/$(IPAC_MODULE_VERSION)
-SNCSEQ=$(EPICS_MODULES)/seq/$(SNCSEQ_MODULE_VERSION)
+#SNCSEQ=$(EPICS_MODULES)/seq/$(SNCSEQ_MODULE_VERSION)
 
 # ==============================================================
 # Define the cvs module version of EPICS BASE that you will use
