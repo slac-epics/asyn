@@ -14,64 +14,11 @@
 #  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
 #--------------------------------------------------------------
 #  Mod:
-#         19-Mar-2010, S. Hoobler        (SONYA):
-#            add asyn-R4-9-lcls5
-#         22-Feb-2010, K. Luchini        (LUCHINI):
-#            add asyn-R4-9-lcls4
-#         27-Apr-2009, K. Luchini        (LUCHINI):
-#            add asyn-R4-9-lcls3
-#         05-Dec-2008, K. Luchini        (LUCHINI):
+#         05-Dev-2008, K. Luchini        (LUCHINI):
 #            add asyn-R4-7-1-lcls5
-#         10-Apr-2008, S. Schuh          (SCHUHS):
-#            add asyn-R4-9, asyn-R4-9-lcls1, and asyn-R4-9-lcls2
 # 
 #==============================================================
 #
-asyn-R4-18-lcls2: DO not use the sequencer; which means do not build testIPServerApp; 
-                  don't need this for production use. 
-                  That is only an example IOC application for testing. 
-                  Create a new release tag for this change = asyn-R4-18-lcls2
-
-asyn-R4-18-lcls1_OLD_IPAC: Using ipac-R2-8-lcls8. This needs to be cleaned up. 
-
-asyn-R4-18-lcls1:     Updated with asyn RELEASE 4-18
-                      edm files are now under the opi directory
-                      I removed both the top level edm and medm
-                      directories.  There are also display files
-                      for boy as well. Boy is part of CSS
-                      The lcls suffix indicates changes specific
-                      to SLAC ICD Software Department 
-asyn-R4-17-RC1-lcls1: Updated with asyn RELEASE 4-17-RC1
-                      Changes were needed for the new motor software
-                      READ Vendor's Release notes in the documentation
-                      directory. 
-
-asyn-R4-16-lcls2:   Build against ipac version 2.11: ipac-R2-11-lcls1
-
-asyn-R4-16-lcls1:   Update to new asyn version 4-16 from ANL
-                    Build with base-R3-14-8-2-lcls6
-                    and base-R3-14-12
-asyn-R4-9-lcls6:   Build with base-R3-14-8-2-lcls6_p1
-                   and base-R3-14-12
-
-asyn-R4-9-lcls5:   Build with base-R3-14-8-2-lcls6 and rtems 4.9.4
-
-asyn-R4-9-lcls4:   Build with base-R3-14-8-2 and rtems 4.9.3
-
-asyn-R4-9-lcls3:   Build with base-R3-14-8-2 and rtems 4.9.1
-
-asyn-R4-9-lcls2:   Build with base-R3-14-9-lcls1 and ipac-R2-8-lcls4.
-		   Include ipac support only for RTEMS-beatnik target.
-
-asyn-R4-9-lcls1:   Build with base-R3-14-8-2-lcls2 and ipac-R2-8-lcls3.
-		   Include ipac support only for RTEMS-beatnik target.
-
-asyn-R4-9:         Direct import from APS source.  Will not build at SLAC.
-
-asyn-R4-7-1-lcls5: Build with base-R3-14-9-lcls1 (RTEMS 4.7.1)
-                   modifications needed to bring the module to EPICS R3-14-9 standard
-                   at LCLS
-
 asyn-R4-7-1-lcls4: Backout to build with base-R2-14-8-2-lcls2
                    Build with ipac-R2-8-lcls3
                    Add this file

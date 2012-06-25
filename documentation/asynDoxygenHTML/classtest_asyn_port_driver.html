@@ -14,7 +14,7 @@
  <tbody>
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
-   <div id="projectname">asyn&#160;<span id="projectnumber">4-18</span></div>
+   <div id="projectname">asyn&#160;<span id="projectnumber">4-19</span></div>
   </td>
  </tr>
  </tbody>
@@ -70,6 +70,8 @@ Public Member Functions</h2></td></tr>
 <tr><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when asyn clients call pasynFloat64-&gt;write().  <a href="#ad68bd63bbdbbb636c412d85a2b3da18a"></a><br/></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">virtual asynStatus&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a7f49b35f2282a1cf1e70e959da1e270a">readFloat64Array</a> (asynUser *pasynUser, epicsFloat64 *value, size_t nElements, size_t *nIn)</td></tr>
 <tr><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when asyn clients call pasynFloat64Array-&gt;read().  <a href="#a7f49b35f2282a1cf1e70e959da1e270a"></a><br/></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">virtual asynStatus&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a20555d73155f75606a96dbce29eb6c91">readEnum</a> (asynUser *pasynUser, char *strings[], int values[], int severities[], size_t nElements, size_t *nIn)</td></tr>
+<tr><td class="mdescLeft">&#160;</td><td class="mdescRight">Called when asyn clients call pasynEnum-&gt;read().  <a href="#a20555d73155f75606a96dbce29eb6c91"></a><br/></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a703e85c2a42e9d33dd0be63912ebb583">simTask</a> (void)</td></tr>
 <tr><td class="mdescLeft">&#160;</td><td class="mdescRight">Simulation task that runs as a separate thread.  <a href="#a703e85c2a42e9d33dd0be63912ebb583"></a><br/></td></tr>
 <tr><td colspan="2"><h2><a name="pro-attribs"></a>
@@ -77,8 +79,12 @@ Protected Attributes</h2></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a935f264bec4a371d4f6219283af209c1">P_Run</a></td></tr>
 <tr><td class="mdescLeft">&#160;</td><td class="mdescRight">Values used for pasynUser-&gt;reason, and indexes into the parameter library.  <a href="#a935f264bec4a371d4f6219283af209c1"></a><br/></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a519c0a451f781e749d3e44d828802fc3">P_MaxPoints</a></td></tr>
-<tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#aa8449af63ba37ae3a3f5c353cf99a6e3">P_TimePerDivision</a></td></tr>
-<tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#ade233cc22eb078f79d619e373d6d06bf">P_VoltsPerDivision</a></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#aa45024545c3d5f2fad7775c4ff34b9a5">P_TimePerDiv</a></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a182e0a6efc891a356f557e3872879a90">P_TimePerDivSelect</a></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#af9887abff0e21edf5ab61ed847bf6d43">P_VertGain</a></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a1570d402f44c65b5cb575f4b2722a2ba">P_VertGainSelect</a></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a06a58f35ee2d003cd7ac609768bd3fe8">P_VoltsPerDiv</a></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a876ae9f028192686f9a1fc2b20357eb7">P_VoltsPerDivSelect</a></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a10edf24df2a5d4f02e5536b68d2ef839">P_VoltOffset</a></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#a7e75958b61a4b2ae709f4a99337c445b">P_TriggerDelay</a></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtest_asyn_port_driver.html#ab34bdf5c101e8a59ffde8cbbde349522">P_NoiseAmplitude</a></td></tr>
@@ -131,6 +137,73 @@ Protected Attributes</h2></td></tr>
 </div>
 </div>
 <hr/><h2>Member Function Documentation</h2>
+<a class="anchor" id="a20555d73155f75606a96dbce29eb6c91"></a><!-- doxytag: member="testAsynPortDriver::readEnum" ref="a20555d73155f75606a96dbce29eb6c91" args="(asynUser *pasynUser, char *strings[], int values[], int severities[], size_t nElements, size_t *nIn)" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">asynStatus testAsynPortDriver::readEnum </td>
+          <td>(</td>
+          <td class="paramtype">asynUser *&#160;</td>
+          <td class="paramname"><em>pasynUser</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>strings</em>[], </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>values</em>[], </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>severities</em>[], </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>nElements</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t *&#160;</td>
+          <td class="paramname"><em>nIn</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td><code> [virtual]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+<p>Called when asyn clients call pasynEnum-&gt;read(). </p>
+<p>The base class implementation simply prints an error message. Derived classes may reimplement this function if required. </p>
+<dl><dt><b>Parameters:</b></dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">pasynUser</td><td>pasynUser structure that encodes the reason and address. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">strings</td><td>Array of string pointers. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">values</td><td>Array of values </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">severities</td><td>Array of severities </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">nElements</td><td>Size of value array </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">nIn</td><td>Number of elements actually returned </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classasyn_port_driver.html#ad7acd2c81a08e3bf1ca54e9fcb8c3c95">asynPortDriver</a>.</p>
+
+</div>
+</div>
 <a class="anchor" id="a7f49b35f2282a1cf1e70e959da1e270a"></a><!-- doxytag: member="testAsynPortDriver::readFloat64Array" ref="a7f49b35f2282a1cf1e70e959da1e270a" args="(asynUser *pasynUser, epicsFloat64 *value, size_t nElements, size_t *nIn)" -->
 <div class="memitem">
 <div class="memproto">
@@ -376,12 +449,25 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a class="anchor" id="aa8449af63ba37ae3a3f5c353cf99a6e3"></a><!-- doxytag: member="testAsynPortDriver::P_TimePerDivision" ref="aa8449af63ba37ae3a3f5c353cf99a6e3" args="" -->
+<a class="anchor" id="aa45024545c3d5f2fad7775c4ff34b9a5"></a><!-- doxytag: member="testAsynPortDriver::P_TimePerDiv" ref="aa45024545c3d5f2fad7775c4ff34b9a5" args="" -->
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int <a class="el" href="classtest_asyn_port_driver.html#aa8449af63ba37ae3a3f5c353cf99a6e3">testAsynPortDriver::P_TimePerDivision</a><code> [protected]</code></td>
+          <td class="memname">int <a class="el" href="classtest_asyn_port_driver.html#aa45024545c3d5f2fad7775c4ff34b9a5">testAsynPortDriver::P_TimePerDiv</a><code> [protected]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+</div>
+</div>
+<a class="anchor" id="a182e0a6efc891a356f557e3872879a90"></a><!-- doxytag: member="testAsynPortDriver::P_TimePerDivSelect" ref="a182e0a6efc891a356f557e3872879a90" args="" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int <a class="el" href="classtest_asyn_port_driver.html#a182e0a6efc891a356f557e3872879a90">testAsynPortDriver::P_TimePerDivSelect</a><code> [protected]</code></td>
         </tr>
       </table>
 </div>
@@ -415,6 +501,32 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="af9887abff0e21edf5ab61ed847bf6d43"></a><!-- doxytag: member="testAsynPortDriver::P_VertGain" ref="af9887abff0e21edf5ab61ed847bf6d43" args="" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int <a class="el" href="classtest_asyn_port_driver.html#af9887abff0e21edf5ab61ed847bf6d43">testAsynPortDriver::P_VertGain</a><code> [protected]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+</div>
+</div>
+<a class="anchor" id="a1570d402f44c65b5cb575f4b2722a2ba"></a><!-- doxytag: member="testAsynPortDriver::P_VertGainSelect" ref="a1570d402f44c65b5cb575f4b2722a2ba" args="" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int <a class="el" href="classtest_asyn_port_driver.html#a1570d402f44c65b5cb575f4b2722a2ba">testAsynPortDriver::P_VertGainSelect</a><code> [protected]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+</div>
+</div>
 <a class="anchor" id="a10edf24df2a5d4f02e5536b68d2ef839"></a><!-- doxytag: member="testAsynPortDriver::P_VoltOffset" ref="a10edf24df2a5d4f02e5536b68d2ef839" args="" -->
 <div class="memitem">
 <div class="memproto">
@@ -428,12 +540,25 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a class="anchor" id="ade233cc22eb078f79d619e373d6d06bf"></a><!-- doxytag: member="testAsynPortDriver::P_VoltsPerDivision" ref="ade233cc22eb078f79d619e373d6d06bf" args="" -->
+<a class="anchor" id="a06a58f35ee2d003cd7ac609768bd3fe8"></a><!-- doxytag: member="testAsynPortDriver::P_VoltsPerDiv" ref="a06a58f35ee2d003cd7ac609768bd3fe8" args="" -->
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int <a class="el" href="classtest_asyn_port_driver.html#ade233cc22eb078f79d619e373d6d06bf">testAsynPortDriver::P_VoltsPerDivision</a><code> [protected]</code></td>
+          <td class="memname">int <a class="el" href="classtest_asyn_port_driver.html#a06a58f35ee2d003cd7ac609768bd3fe8">testAsynPortDriver::P_VoltsPerDiv</a><code> [protected]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+</div>
+</div>
+<a class="anchor" id="a876ae9f028192686f9a1fc2b20357eb7"></a><!-- doxytag: member="testAsynPortDriver::P_VoltsPerDivSelect" ref="a876ae9f028192686f9a1fc2b20357eb7" args="" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int <a class="el" href="classtest_asyn_port_driver.html#a876ae9f028192686f9a1fc2b20357eb7">testAsynPortDriver::P_VoltsPerDivSelect</a><code> [protected]</code></td>
         </tr>
       </table>
 </div>
@@ -455,11 +580,11 @@ Protected Attributes</h2></td></tr>
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following files:<ul>
-<li>/home/epics/devel/asynR4-18/testAsynPortDriverApp/src/<a class="el" href="test_asyn_port_driver_8h_source.html">testAsynPortDriver.h</a></li>
-<li>/home/epics/devel/asynR4-18/testAsynPortDriverApp/src/<a class="el" href="test_asyn_port_driver_8cpp.html">testAsynPortDriver.cpp</a></li>
+<li>/home/epics/devel/asynR4-19/testAsynPortDriverApp/src/<a class="el" href="test_asyn_port_driver_8h_source.html">testAsynPortDriver.h</a></li>
+<li>/home/epics/devel/asynR4-19/testAsynPortDriverApp/src/<a class="el" href="test_asyn_port_driver_8cpp.html">testAsynPortDriver.cpp</a></li>
 </ul>
 </div>
-<hr class="footer"/><address class="footer"><small>Generated on Thu Nov 3 2011 for asyn by&#160;
+<hr class="footer"/><address class="footer"><small>Generated on Mon May 21 2012 for asyn by&#160;
 <a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.7.4 </small></address>
 </body>

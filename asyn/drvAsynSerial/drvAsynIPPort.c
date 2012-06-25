@@ -286,7 +286,7 @@ connectIt(void *drvPvt, asynUser *pasynUser)
         if ((tty->flags & FLAG_BROADCAST)
          && (setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (void *)&i, sizeof i) < 0)) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                          "Can't set %s socket BROADCAST option: %s\n",
+                          "Can't set %s socket BROADCAST option: %s",
                           tty->IPDeviceName, strerror(SOCKERRNO));
             epicsSocketDestroy(fd);
             return asynError;
@@ -301,6 +301,7 @@ connectIt(void *drvPvt, asynUser *pasynUser)
             if(hostToIPAddr(tty->IPHostName, &tty->farAddr.ia.sin_addr) < 0) {
                 epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                                             "Unknown host \"%s\"", tty->IPHostName);
+                epicsSocketDestroy(fd);
                 return asynError;
             }
             tty->haveAddress = 1;
@@ -324,7 +325,7 @@ connectIt(void *drvPvt, asynUser *pasynUser)
     if ((tty->socketType == SOCK_STREAM)
      && (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void *)&i, sizeof i) < 0)) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                      "Can't set %s socket NODELAY option: %s\n",
+                      "Can't set %s socket NODELAY option: %s",
                       tty->IPDeviceName, strerror(SOCKERRNO));
         epicsSocketDestroy(fd);
         return asynError;
@@ -332,7 +333,7 @@ connectIt(void *drvPvt, asynUser *pasynUser)
 #ifdef USE_POLL
     if (setNonBlock(fd, 1) < 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                               "Can't set %s O_NONBLOCK option: %s\n",
+                               "Can't set %s O_NONBLOCK option: %s",
                                        tty->IPDeviceName, strerror(SOCKERRNO));
         epicsSocketDestroy(fd);
         return asynError;
@@ -505,7 +506,7 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     }
     if (maxchars <= 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                  "%s maxchars %d. Why <=0?\n",tty->IPDeviceName,(int)maxchars);
+                  "%s maxchars %d. Why <=0?",tty->IPDeviceName,(int)maxchars);
         return asynError;
     }
     readPollmsec = (int) (pasynUser->timeout * 1000.0);
