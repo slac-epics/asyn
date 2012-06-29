@@ -13,6 +13,255 @@
   <hr />
   <div style="text-align: center">
     <h2>
+      Release 4-19</h2>
+    <h2>
+      May 21, 2012</h2>
+  </div>
+  <h3>
+    Interfaces</h3>
+  <p>
+    Added a new interface, asynEnum. This interface is designed to allow drivers to
+    set the strings, values, and severities for record enum fields. This can be done
+    both at iocInit(), in init_record() with the pasynEnumSyncIO->read() function, and
+    after iocInit via callbacks to device support.
+  </p>
+  <h3>
+    devEpics</h3>
+  <p>
+    Added support for the new asynEnum interface for bo, bi, mbbo, and mbbi records
+    in the asynInt32 and asynUInt32Digital device support. These records now attempt
+    to read the initial values of the strings, values (mbbo and mbbi only) and severities
+    for the enum fields. They also support callbacks on the asynEnum interface, so that
+    enum values can be set dynamically at run-time.</p>
+  <p>
+    Improved the support for setting the alarm status of records. Previously for records
+    that were not I/O Intr scanned STAT was always to READ_ALARM or WRITE_ALARM, and
+    SEVR was set to INVALID_ALARM. A new function, pasynEpicsUtils->asynStatusToEpicsAlarm()
+    was added that converts asynStatus values to EPICS alarm values. This allows records
+    to have STAT=TIMEOUT_ALARM, DISABLE_ALARM, etc. More values of STAT can be supported
+    in the future by adding more values to the asynStatus enum.</p>
+  <p>
+    Previously it was not possible for input records with SCAN=I/O Intr to have their
+    alarm status set at all. This support has been added. Device support now uses the
+    pasynUser->auxStatus field in the pasynUser passed to the callback function. If
+    auxStatus != asynSuccess then the record alarm STAT and SEVR are set to values based
+    on the asynStatus. asyn port drivers can now signal error status to clients in callback
+    functions by setting pasynUser->auxStatus to asynSuccess, asynTimeout, asynError,
+    etc. This change should be backwards compatible with all drivers because the pasynUser
+    that is used for the callbacks is private to the callback function, and the auxStatus
+    field is initialized to 0, which is asynSuccess.</p>
+  <p>
+    Added new waveform record device support, asynInt32TimeSeries and asynFloat64TimeSeries.
+    These use callbacks from the driver on those respective interfaces to collect a
+    time series of values in a waveform record. Added new medm file asynTimeSeries.adl
+    for this, and added an example waveform record to testEpics/Db/devInt32.db.</p>
+  <h3>
+    asynRecord</h3>
+  <p>
+    Fixed bugs that caused crashes if SCAN=I/O Intr was set at iocInit.</p>
+  <h3>
+    asynDriver and asynShellCommands</h3>
+  <p>
+    Added support for I/O redirection to the "dbior" and "asynPrint" commands.</p>
+  <h3>
+    asynPortDriver</h3>
+  <p>
+    Added support for the new asynEnum interface described above.</p>
+  <p>
+    Added support in asynPortDriver for passing status information to clients in callbacks.
+    Each parameter in the parameter library now has an associated asynStatus variable.
+    New functions setParamStatus() and getParamStatus() are provided to access this
+    variable. For example, if setParamStatus(paramIndex, asynError) is called then callParamCallbacks()
+    will cause any input records with SCAN=I/O Intr to go into alarm state.</p>
+  <p>
+    Moved asynPortDriver from the miscellaneous directory to its own directory. Improved
+    the internals, but did not change the API. Thanks to John Hammonds for this.</p>
+  <h3>
+    Other</h3>
+  <p>
+    Added a new test application, testErrorsApp. This application uses a driver based
+    on asynPortDriver to test error handling for all interfaces and all records support
+    by the asyn standard device support (asyn/devEpics). It can be used to test error
+    handling of records with both periodic scanning and I/O Intr scanning. It also tests
+    the new asynEnum interface for setting enum strings, values, and severities at iocInit.</p>
+  <p>
+    Removed the newline terminator from all messages in pasynUser-&gt;errorMessage.
+    This formatting does not belong in the error message. Thanks to Lewis Muir for this.</p>
+  <div style="text-align: center">
+    <h2>
+      Release 4-18</h2>
+    <h2>
+      November 2, 2011</h2>
+  </div>
+  <h3>
+    Miscellaneous</h3>
+  <p>
+    Changes to avoid compiler warnings on 64-bit Darwin.</p>
+  <p>
+    Changes to avoid compiler warnings and errors on older Solaris compiler.</p>
+  <p>
+    Changed non-standard __VAR_ARGS__ to __VA_ARGS__ in asynPrint macro.</p>
+  <p>
+    Added titles to EDM screens.</p>
+  <p>
+    Added CSS BOY screens.</p>
+  <p>
+    Fixed build problem. It was rebuilding the VXI11 code with rpcgen each time make
+    was run, even if nothing had changed.</p>
+  <h3>
+    asynPortDriver</h3>
+  <p>
+    Cleaned up logic for callbacks on asynUInt32Digital interface. It was not doing
+    callbacks if the value had not changed but an interrupt had occured for bits in
+    the mask. This would happen when interrupts were only enabled on the falling or
+    rising edges but not both. Added an additional form of setUIntDigitalParam that
+    takes an interruptMask argument. In the previous releases drivers were calling setUInt32Interrupt
+    for callbacks which is not correct. That function should only be called by device
+    support to tell the driver which interrupts to recognize. These problems made the
+    quadEM not work correctly with the ipUnidig.</p>
+  <h3>
+    drvAsynSerialPort</h3>
+  <p>
+    Bug fix on WIN32. It was waiting forever when timeout=0 when it should return whatever
+    characters are available without waiting at all.</p>
+  <div style="text-align: center">
+    <h2>
+      Release 4-17</h2>
+    <h2>
+      August 3, 2011</h2>
+  </div>
+  <h3>
+    asynRecord</h3>
+  <p>
+    Fixed asynRecord.dbd to include promptgroup for fields that need it. Removed the
+    SOCK field and asynSocketSetup.adl; the record no longer supports creating sockets,
+    which can easily be done with the iocsh drvAsynIPPortConfigure command.</p>
+  <p>
+    Added IXON, IXOFF, and IXANY fields for new XON/XOFF support on serial ports. These
+    fields were added to the asynSerialPortSetup.adl medm screen.</p>
+  <h3>
+    devAsynXXXArray</h3>
+  <p>
+    For waveform output records the device support was always writing NELM elements,
+    rather than NORD elements.</p>
+  <h3>
+    asynInterposeCom.c</h3>
+  <p>
+    Added missing include file, which caused asyn not to build on EPICS base versions
+    before 3.14.10.</p>
+  <h3>
+    vxi11core_xdr.c</h3>
+  <p>
+    Removed unneeded declarations of 'register int32_t *buf' from many functions. Removed
+    register keyword from remaining instances, because address was being taken, which
+    is illegal in C, and was causing errors on vxWorks Pentium cross-compiler.</p>
+  <h3>
+    asynPortDriver</h3>
+  <p>
+    Added a global function, findAsynPortDriver(const char *portName), that returns
+    a pointer to an asynPortDriver object given the asyn port name.</p>
+  <p>
+    Added 3 new asynPortDriver methods: setUInt32DigitalInterrupt, clearUInt32Interrupt,
+    getUInt32Interrupt. These were needed to complete the asynUInt32Digital support.</p>
+  <h3>
+    asynShellCommands</h3>
+  <p>
+    The asynOctetSetInputEos, asynOctetSetOutputEos, asynOctetShowInputEos and asynOctetShowOutputEos
+    commands now take effect even if the port is not connected. This makes startup scripts
+    more robust in the face of devices that are not accessible at IOC startup. Removed
+    the unused "drvInfo" parameter from each of these functions.</p>
+  <h3>
+    drvAsynIPPort</h3>
+  <p>
+    Host name lookup is now deferred until port connection time. This makes startup
+    scripts robust in the face of a device that is offline at IOC startup and has been
+    offline for so long that it's DNS entry has been deleted.</p>
+  <p>
+    Prevent reconnects during IOC shutdown. The IP Port exithandler runs before record
+    scanning stops. In that interval, if a record is scanned then it will trigger a
+    reconnect, and new connection can be shutdown without sending data, or without waiting
+    for a reply. Some embedded TCP/IP stacks have problems dealing with this. Thanks
+    to Michael Davidsaver for this fix.</p>
+  <h3>
+    drvAsynSerialPort</h3>
+  <p>
+    Added support for local serial ports on Windows, i.e.win32-x86 and windows-x64 architectures.
+    Previously Windows local serial ports were only supported on the cygwin-x86 architecture.</p>
+  <p>
+    Added support for serial line software handshake flags (ixon/ixoff/xany) on most
+    architectures (e.g. Linux, Cygwin, Darwin, WIN32; see: man stty) and vxWorks (ixon
+    only). Thanks to Dirk Zimoch for this.</p>
+  <h3>
+    Miscelleaneous</h3>
+  <p>
+    Changed asyn/Makefile to fix build dependencies for rpcgen of vxi11. Thanks to Michael
+    Davidsaver for this fix.</p>
+  <div style="text-align: center">
+    <h2>
+      Release 4-16</h2>
+    <h2>
+      January 17, 2011</h2>
+  </div>
+  <h3>
+    drvAsynIPPort</h3>
+  <p>
+    Support has been added for terminal servers which support the TELNET RFC 2217`protocol.
+    To communicate with such devices specify "COM" as the protocol in the drvAsynIPPortConfigure
+    command. This allows port parameters (speed, parity, etc.) to be set using an asynRecord
+    or asynSetOption commands just as for local serial ports.</p>
+  <h3>
+    drvVxi11</h3>
+  <p>
+    Fix from Benjamin Franksen to fix problem with reconnection.</p>
+  <p>
+    The 'timeout' argument to vxi11Configure has been changed from double to string.
+    This allows vxi11Configure to be called directly from the vxWorks shell.</p>
+  <div style="text-align: center">
+    <h2>
+      Release 4-15</h2>
+    <h2>
+      December 8, 2010</h2>
+  </div>
+  <h3>
+    vxi11</h3>
+  <p>
+    The third argument to the vxi11Configure command is now a bit-map. The least significant
+    bit (value 0x1) remains the 'recover with IFC' control. The next-to-least significant
+    bit (value 0x2) when set will cause all devices to be locked when a connection is
+    made. This allows for cooperative exclusive access to devices.</p>
+  <h3>
+    asynManager</h3>
+  <p>
+    Fixed memory leak in lockPort() when an error occured, was not calling freeAsynUser().
+    Thanks to Andrew Starritt for finding this.</p>
+  <h3>
+    devEpics</h3>
+  <p>
+    Bug fix for devAsynInt32 and devAsynFloat64: it was not freeing the mutex in processAiAverage
+    if numAverage==0, i.e. there had been no callbacks from the driver since the record
+    last processed. This would hang the next thread that tried to take the mutex, typically
+    the driver callback thread.</p>
+  <p>
+    Bug fix for devAsynXXXArray: it was calling drvUserCreate in the port driver even
+    if there was no userParam in the link, which could crash the driver.</p>
+  <h3>
+    Many files</h3>
+  <p>
+    Changes to allow building dynamically on WIN32 (i.e. making DLLs).</p>
+  <h3>
+    Makefiles</h3>
+  <p>
+    Changes to allow building on Cygwin 1.7.x or 1.5.x; replaced rpc with $(CYGWIN_RPC_LIB),
+    which allows it to link with rpc on 1.5.x and tirpc on 1.7.x. You need to add one
+    of the following 2 lines to <code>base/configure/os/CONFIG_SITE.cygwin-x86.cygwin-x86</code></p>
+  <pre>    For Cygwin 1.7.x:
+    CYGWIN_RPC_LIB = tirpc
+
+    For Cygwin 1.5.x
+    CYGWIN_RPC_LIB = rpc
+  </pre>
+  <div style="text-align: center">
+    <h2>
       Release 4-14</h2>
     <h2>
       July 29, 2010</h2>

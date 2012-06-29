@@ -103,12 +103,12 @@ applyOptions(asynUser *pasynUser, ttyController_t *tty)
     if ((ioctl(tty->fd, FIOBAUDRATE, tty->baud) < 0)
      && (ioctl(tty->fd, SIO_BAUD_SET, tty->baud) < 0)) {
         epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize,
-                                "SIO_BAUD_SET failed: %s\n", strerror(errno));
+                                "SIO_BAUD_SET failed: %s", strerror(errno));
         return asynError;
     }
     if (ioctl(tty->fd, SIO_HW_OPTS_SET, tty->termios.c_cflag) < 0) {
         epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize,
-                               "SIO_HW_OPTS_SET failed: %s\n", strerror(errno));
+                               "SIO_HW_OPTS_SET failed: %s", strerror(errno));
         return asynError;
     }
 #else
@@ -116,7 +116,7 @@ applyOptions(asynUser *pasynUser, ttyController_t *tty)
     tty->termios.c_cflag |= CREAD;
     if (tcsetattr(tty->fd, TCSANOW, &tty->termios) < 0) {
         epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize,
-                                   "tcsetattr failed: %s\n", strerror(errno));
+                                   "tcsetattr failed: %s", strerror(errno));
         return asynError;
     }
 #endif
@@ -171,6 +171,27 @@ getOption(void *drvPvt, asynUser *pasynUser,
             c = (tty->termios.c_cflag & CRTSCTS) ? 'Y' : 'N';
 #endif
         l = epicsSnprintf(val, valSize, "%c", c);
+    }
+    else if (epicsStrCaseCmp(key, "ixon") == 0) {
+#ifdef vxWorks
+        l = epicsSnprintf(val, valSize, "%c",  (ioctl(tty->fd, FIOGETOPTIONS, 0) & OPT_TANDEM) ? 'Y' : 'N');
+#else
+        l = epicsSnprintf(val, valSize, "%c",  (tty->termios.c_iflag & IXON) ? 'Y' : 'N');
+#endif
+    }
+    else if (epicsStrCaseCmp(key, "ixany") == 0) {
+#ifdef vxWorks
+        l = epicsSnprintf(val, valSize, "%c",  'N');
+#else
+        l = epicsSnprintf(val, valSize, "%c",  (tty->termios.c_iflag & IXANY) ? 'Y' : 'N');
+#endif
+    }
+    else if (epicsStrCaseCmp(key, "ixoff") == 0) {
+#ifdef vxWorks
+        l = epicsSnprintf(val, valSize, "%c",  'N');
+#else
+        l = epicsSnprintf(val, valSize, "%c",  (tty->termios.c_iflag & IXOFF) ? 'Y' : 'N');
+#endif
     }
     else {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
@@ -232,12 +253,12 @@ setOption(void *drvPvt, asynUser *pasynUser, const char *key, const char *val)
         }
         if(cfsetispeed(&tty->termios,baudCode) < 0 ) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                "cfsetispeed returned %s\n",strerror(errno));
+                "cfsetispeed returned %s",strerror(errno));
             return asynError;
         }
         if(cfsetospeed(&tty->termios,baudCode) < 0 ) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                "cfsetospeed returned %s\n",strerror(errno));
+                "cfsetospeed returned %s",strerror(errno));
             return asynError;
         }
         }
@@ -328,6 +349,67 @@ setOption(void *drvPvt, asynUser *pasynUser, const char *key, const char *val)
                                                       "Invalid crtscts value.");
             return asynError;
         }
+    }
+    else if (epicsStrCaseCmp(key, "ixon") == 0) {
+        if (epicsStrCaseCmp(val, "Y") == 0) {
+#ifdef vxWorks
+            ioctl(tty->fd, FIOSETOPTIONS, ioctl(tty->fd, FIOGETOPTIONS, 0) | OPT_TANDEM);
+            return asynSuccess;
+#else
+            tty->termios.c_iflag |= IXON;
+#endif
+        }
+        else if (epicsStrCaseCmp(val, "N") == 0) {
+#ifdef vxWorks
+            ioctl(tty->fd, FIOSETOPTIONS, ioctl(tty->fd, FIOGETOPTIONS, 0) & ~OPT_TANDEM);
+            return asynSuccess;
+#else
+            tty->termios.c_iflag &= ~IXON;
+#endif
+        }
+        else {
+            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                                                    "Invalid ixon value.");
+            return asynError;
+        }
+    }
+    else if (epicsStrCaseCmp(key, "ixany") == 0) {
+#ifdef vxWorks
+        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                                                    "Option ixany not supported on vxWorks");
+            return asynError;       
+#else
+        if (epicsStrCaseCmp(val, "Y") == 0) {
+            tty->termios.c_iflag |= IXANY;
+        }
+        else if (epicsStrCaseCmp(val, "N") == 0) {
+            tty->termios.c_iflag &= ~IXANY;
+        }
+        else {
+            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                                                    "Invalid ixany value.");
+            return asynError;
+        }
+#endif
+    }
+    else if (epicsStrCaseCmp(key, "ixoff") == 0) {
+#ifdef vxWorks
+        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                                                    "Option ixoff not supported on vxWorks");
+            return asynError;       
+#else
+        if (epicsStrCaseCmp(val, "Y") == 0) {
+            tty->termios.c_iflag |= IXOFF;
+        }
+        else if (epicsStrCaseCmp(val, "N") == 0) {
+            tty->termios.c_iflag &= ~IXOFF;
+        }
+        else {
+            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                                                    "Invalid ixoff value.");
+            return asynError;
+        }
+#endif
     }
     else if (epicsStrCaseCmp(key, "") != 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
@@ -427,14 +509,14 @@ connectIt(void *drvPvt, asynUser *pasynUser)
      */
     if ((tty->fd = open(tty->serialDeviceName, O_RDWR|O_NOCTTY|O_NONBLOCK, 0)) < 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                            "%s Can't open  %s\n",
+                            "%s Can't open  %s",
                                     tty->serialDeviceName, strerror(errno));
         return asynError;
     }
 #if defined(FD_CLOEXEC) && !defined(vxWorks)
     if (fcntl(tty->fd, F_SETFD, FD_CLOEXEC) < 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                            "Can't set %s close-on-exec flag: %s\n",
+                            "Can't set %s close-on-exec flag: %s",
                                     tty->serialDeviceName, strerror(errno));
         close(tty->fd);
         tty->fd = -1;
@@ -590,7 +672,7 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     }
     if (maxchars <= 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-            "%s maxchars %d Why <=0?\n",tty->serialDeviceName,(int)maxchars);
+            "%s maxchars %d Why <=0?",tty->serialDeviceName,(int)maxchars);
         return asynError;
     }
     if (tty->readTimeout != pasynUser->timeout) {

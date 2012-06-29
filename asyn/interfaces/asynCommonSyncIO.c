@@ -77,7 +77,7 @@ static asynStatus connect(const char *port, int addr,
     pasynInterface = pasynManager->findInterface(pasynUser, asynCommonType, 1);
     if (!pasynInterface) {
        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-           "interface %s is not supported by port\n",asynCommonType);
+           "interface %s is not supported by port",asynCommonType);
        return asynError;
     }
     pioPvt->pasynCommon = (asynCommon *)pasynInterface->pinterface;
@@ -126,7 +126,6 @@ static asynStatus disconnect(asynUser *pasynUser)
 
 static void connectDeviceCallback(asynUser *pasynUser)
 {
-    asynStatus status;
     ioPvt      *pioPvt = (ioPvt *)pasynUser->userPvt;
 
     if (pioPvt->connect)

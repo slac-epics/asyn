@@ -77,7 +77,10 @@ typedef struct devPvt{
     CALLBACK    callback;
     IOSCANPVT   ioScanPvt;
     void        *registrarPvt;
-    int         gotValue; /*For interruptCallback*/
+    int         gotValue; /* For interruptCallback */
+    asynStatus  status;
+    epicsAlarmCondition alarmStat;
+    epicsAlarmSeverity alarmSevr;
     interruptCallbackOctet asynCallback;
 }devPvt;
 
@@ -266,6 +269,8 @@ static void interruptCallbackSi(void *drvPvt, asynUser *pasynUser,
         psi->udf = 0;
         if(num<MAX_STRING_SIZE) psi->val[num] = 0;
     }
+    /* Set the status from pasynUser->auxStatus so I/O Intr scanned records can set alarms */
+    if (pdevPvt->status == asynSuccess) pdevPvt->status = pasynUser->auxStatus;
     scanIoRequest(pdevPvt->ioScanPvt);
 }
 
@@ -274,17 +279,17 @@ static void interruptCallbackWaveform(void *drvPvt, asynUser *pasynUser,
 {
     devPvt         *pdevPvt = (devPvt *)drvPvt;
     waveformRecord *pwf = (waveformRecord *)pdevPvt->precord;
-    unsigned            num;
+    unsigned        num;
+    char           *pbuf = (char *)pwf->bptr;
     
     pdevPvt->gotValue = 1; 
     num = (numchars>=pwf->nelm ? pwf->nelm : numchars);
-    if(num>=0) {
-        char *pbuf = (char *)pwf->bptr;
-        memcpy(pbuf,data,num);
-        if(num<pwf->nelm) pbuf[num] = 0;
-        pwf->nord = num;
-        pwf->udf = 0;
-    }
+    memcpy(pbuf,data,num);
+    if(num<pwf->nelm) pbuf[num] = 0;
+    pwf->nord = num;
+    pwf->udf = 0;
+    /* Set the status from pasynUser->auxStatus so I/O Intr scanned records can set alarms */
+    if (pdevPvt->status == asynSuccess) pdevPvt->status = pasynUser->auxStatus;
     scanIoRequest(pdevPvt->ioScanPvt);
 }
 
@@ -355,7 +360,9 @@ static asynStatus writeIt(asynUser *pasynUser,const char *message,size_t nbytes)
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
             "%s devAsynOctet: writeIt failed %s\n",
             precord->name,pasynUser->errorMessage);
-        recGblSetSevr(precord, WRITE_ALARM, INVALID_ALARM);
+        pasynEpicsUtils->asynStatusToEpicsAlarm(status, WRITE_ALARM, &pdevPvt->alarmStat,
+                                                INVALID_ALARM, &pdevPvt->alarmSevr);
+        recGblSetSevr(precord, pdevPvt->alarmStat, pdevPvt->alarmSevr);
         return status;
     }
     if(nbytes != nbytesTransfered) {
@@ -386,7 +393,9 @@ static asynStatus readIt(asynUser *pasynUser,char *message,
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
             "%s devAsynOctet: readIt failed %s\n",
             precord->name,pasynUser->errorMessage);
-        recGblSetSevr(precord, READ_ALARM, INVALID_ALARM);
+        pasynEpicsUtils->asynStatusToEpicsAlarm(status, READ_ALARM, &pdevPvt->alarmStat,
+                                                INVALID_ALARM, &pdevPvt->alarmSevr);
+        recGblSetSevr(precord, pdevPvt->alarmStat, pdevPvt->alarmSevr);
         return status;
     }
     asynPrintIO(pasynUser,ASYN_TRACEIO_DEVICE,message,*nBytesRead,
@@ -409,9 +418,20 @@ static long processCommon(dbCommon *precord)
             asynPrint(pdevPvt->pasynUser, ASYN_TRACE_ERROR,
                 "%s devAsynOctet::processCommon, error queuing request %s\n", 
                 precord->name,pdevPvt->pasynUser->errorMessage);
-            recGblSetSevr(precord,READ_ALARM,INVALID_ALARM);
+            pasynEpicsUtils->asynStatusToEpicsAlarm(status, READ_ALARM, &pdevPvt->alarmStat,
+                                                INVALID_ALARM, &pdevPvt->alarmSevr);
+            recGblSetSevr(precord, pdevPvt->alarmStat, pdevPvt->alarmSevr);
         }
     }
+    /* If interrupt callbacks set an error status put record in alarm */
+    if (pdevPvt->status != asynSuccess) {
+        pasynEpicsUtils->asynStatusToEpicsAlarm(pdevPvt->status, READ_ALARM, &pdevPvt->alarmStat,
+                                                INVALID_ALARM, &pdevPvt->alarmSevr);
+        recGblSetSevr(precord, pdevPvt->alarmStat, pdevPvt->alarmSevr);
+    }
+    pdevPvt->status = asynSuccess;
+    pdevPvt->gotValue = 0;
+        
     return(0);
 }
 

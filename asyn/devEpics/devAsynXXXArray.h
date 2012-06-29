@@ -18,7 +18,7 @@
     March 26, 2008 \
 */ \
  \
- \
+ \
 typedef struct devAsynWfPvt{ \
     dbCommon        *pr; \
     asynUser        *pasynUser; \
@@ -29,6 +29,8 @@ typedef struct devAsynWfPvt{ \
     CALLBACK        callback; \
     IOSCANPVT       ioScanPvt; \
     asynStatus      status; \
+    epicsAlarmCondition alarmStat; \
+    epicsAlarmSeverity alarmSevr; \
     int             gotValue; /*For interruptCallbackInput */ \
     int             nord; \
     INTERRUPT       interruptCallback; \
@@ -70,7 +72,7 @@ epicsExportAddress(dset, DSET_IN); \
 epicsExportAddress(dset, DSET_OUT); \
 \
 static char *driverName = DRIVER_NAME; \
- \
+ \
 static long initCommon(dbCommon *pr, DBLINK *plink,  \
     userCallback callback, INTERRUPT interruptCallback) \
 { \
@@ -107,7 +109,7 @@ static long initCommon(dbCommon *pr, DBLINK *plink,  \
         goto bad; \
     } \
     pasynInterface = pasynManager->findInterface(pasynUser,asynDrvUserType,1); \
-    if(pasynInterface) { \
+    if(pasynInterface && pPvt->userParam) { \
         asynDrvUser *pasynDrvUser; \
         void       *drvPvt; \
  \
@@ -117,8 +119,8 @@ static long initCommon(dbCommon *pr, DBLINK *plink,  \
             pPvt->userParam,0,0); \
         if(status!=asynSuccess) { \
             errlogPrintf( \
-                "devAsynLong::initCommon, %s drvUserInit failed %s\n", \
-                pr->name, pasynUser->errorMessage); \
+                "%s::initCommon, %s drvUserCreate failed %s\n", \
+                driverName, pr->name, pasynUser->errorMessage); \
             goto bad; \
         } \
     } \
@@ -187,30 +189,34 @@ static long initWfArrayOut(waveformRecord *pwf) \
 static long initWfArrayIn(waveformRecord *pwf) \
 { return initCommon((dbCommon *)pwf, (DBLINK *)&pwf->inp,  \
     callbackWf, interruptCallbackInput); }  \
- \
+ \
 static long processCommon(dbCommon *pr) \
 { \
     devAsynWfPvt *pPvt = (devAsynWfPvt *)pr->dpvt; \
     waveformRecord *pwf = (waveformRecord *)pr; \
-    int status; \
  \
     if (!pPvt->gotValue && !pr->pact) {   /* This is an initial call from record */ \
         if(pPvt->canBlock) pr->pact = 1; \
-        status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0); \
-        if((status==asynSuccess) && pPvt->canBlock) return 0; \
+        pPvt->status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0); \
+        if((pPvt->status==asynSuccess) && pPvt->canBlock) return 0; \
         if(pPvt->canBlock) pr->pact = 0; \
-        if (status != asynSuccess) { \
+        if (pPvt->status != asynSuccess) { \
             asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR, \
                 "%s processCommon, error queuing request %s\n", \
                  pr->name, pPvt->pasynUser->errorMessage); \
-            recGblSetSevr(pr, READ_ALARM, INVALID_ALARM); \
         } \
     } \
+    if (pPvt->status != asynSuccess) { \
+        pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->status, READ_ALARM, &pPvt->alarmStat, \
+                                                INVALID_ALARM, &pPvt->alarmSevr); \
+        recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr); \
+    } \
     if (pPvt->gotValue) { \
-	pwf->nord = pPvt->nord; \
+        pwf->nord = pPvt->nord; \
         pwf->udf = 0; \
     } \
     pPvt->gotValue = 0; \
+    pPvt->status = asynSuccess; \
     return 0; \
 }  \
  \
@@ -223,14 +229,16 @@ static void callbackWfOut(asynUser *pasynUser) \
     asynPrint(pasynUser, ASYN_TRACEIO_DEVICE, \
               "%s %s::callbackWfOut\n", pwf->name, driverName); \
     status = pPvt->pArray->write(pPvt->arrayPvt, \
-        pPvt->pasynUser, pwf->bptr, pwf->nelm); \
+        pPvt->pasynUser, pwf->bptr, pwf->nord); \
     if (status == asynSuccess) { \
         pwf->udf=0; \
     } else { \
         asynPrint(pasynUser, ASYN_TRACE_ERROR, \
               "%s %s::callbackWfOut write error %s\n", \
               pwf->name, driverName, pasynUser->errorMessage); \
-        recGblSetSevr(pwf, WRITE_ALARM, INVALID_ALARM); \
+        pasynEpicsUtils->asynStatusToEpicsAlarm(status, WRITE_ALARM, &pPvt->alarmStat, \
+                                                INVALID_ALARM, &pPvt->alarmSevr); \
+        recGblSetSevr(pwf, pPvt->alarmStat, pPvt->alarmSevr); \
     } \
     if(pwf->pact) callbackRequestProcessCallback(&pPvt->callback,pwf->prio,pwf); \
 }  \
@@ -253,7 +261,9 @@ static void callbackWf(asynUser *pasynUser) \
         asynPrint(pasynUser, ASYN_TRACE_ERROR, \
               "%s %s::callbackWf read error %s\n", \
               pwf->name, driverName, pasynUser->errorMessage); \
-        recGblSetSevr(pwf, READ_ALARM, INVALID_ALARM); \
+        pasynEpicsUtils->asynStatusToEpicsAlarm(status, READ_ALARM, &pPvt->alarmStat, \
+                                                INVALID_ALARM, &pPvt->alarmSevr); \
+        recGblSetSevr(pwf, pPvt->alarmStat, pPvt->alarmSevr); \
     } \
     if(pwf->pact) callbackRequestProcessCallback(&pPvt->callback,pwf->prio,pwf); \
 } \
@@ -274,9 +284,10 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,  \
     for (i=0; i<(int)len; i++) pData[i] = value[i]; \
     pPvt->gotValue = 1; \
     pPvt->nord = len; \
+    if (pPvt->status == asynSuccess) pPvt->status = pasynUser->auxStatus; \
     scanIoRequest(pPvt->ioScanPvt); \
 } \
- \
+ \
 static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,  \
                 EPICS_TYPE *value, size_t len) \
 { \

@@ -55,6 +55,8 @@
 #include <epicsExport.h>
 #include "asynDriver.h"
 #include "asynOctet.h"
+#include "asynInterposeCom.h"
+#include "asynInterposeEos.h"
 #include "drvAsynIPPort.h"
 
 #if defined(__rtems__)
@@ -88,12 +90,14 @@
 typedef struct {
     asynUser          *pasynUser;        /* Not currently used */
     char              *IPDeviceName;
+    char              *IPHostName;
     char              *portName;
     int                socketType;
     int                flags;
     int                fd;
     unsigned long      nRead;
     unsigned long      nWritten;
+    int                haveAddress;
     osiSockAddr        farAddr;
     asynInterface      common;
     asynInterface      octet;
@@ -101,6 +105,7 @@ typedef struct {
 
 #define FLAG_BROADCAST                  0x1
 #define FLAG_CONNECT_PER_TRANSACTION    0x2
+#define FLAG_SHUTDOWN                   0x4
 
 #ifdef FAKE_POLL
 /*
@@ -210,15 +215,25 @@ asynCommonReport(void *drvPvt, FILE *fp, int details)
 static void
 cleanup (void *arg)
 {
+    asynStatus status;
     ttyController_t *tty = (ttyController_t *)arg;
 
     if (!tty) return;
+    status=pasynManager->lockPort(tty->pasynUser);
+    if(status!=asynSuccess)
+        asynPrint(tty->pasynUser, ASYN_TRACE_ERROR, "%s: cleanup locking error\n", tty->portName);
+
     if (tty->fd >= 0) {
+        asynPrint(tty->pasynUser, ASYN_TRACE_FLOW, "%s: shutdown socket\n", tty->portName);
+        tty->flags |= FLAG_SHUTDOWN; /* prevent reconnect */
         epicsSocketDestroy(tty->fd);
         tty->fd = -1;
         /* If this delay is not present then the sockets are not always really closed cleanly */
         epicsThreadSleep(CLOSE_SOCKET_DELAY);
     }
+
+    if(status==asynSuccess)
+        pasynManager->unlockPort(tty->pasynUser);
 }
 
 /*
@@ -244,6 +259,10 @@ connectIt(void *drvPvt, asynUser *pasynUser)
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                               "%s: Link already open!", tty->IPDeviceName);
         return asynError;
+    } else if(tty->flags & FLAG_SHUTDOWN) {
+        epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                              "%s: Link shutdown!", tty->IPDeviceName);
+        return asynError;
     }
 
     /* If pasynUser->reason > 0) then use this as the file descriptor */
@@ -267,20 +286,38 @@ connectIt(void *drvPvt, asynUser *pasynUser)
         if ((tty->flags & FLAG_BROADCAST)
          && (setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (void *)&i, sizeof i) < 0)) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                          "Can't set %s socket BROADCAST option: %s\n",
+                          "Can't set %s socket BROADCAST option: %s",
                           tty->IPDeviceName, strerror(SOCKERRNO));
             epicsSocketDestroy(fd);
             return asynError;
         }
 
         /*
+         * Convert host name/number to IP address.
+         * We delay doing this until now in case a device
+         * has just appeared in a DNS database.
+         */
+        if (!tty->haveAddress) {
+            if(hostToIPAddr(tty->IPHostName, &tty->farAddr.ia.sin_addr) < 0) {
+                epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                                            "Unknown host \"%s\"", tty->IPHostName);
+                epicsSocketDestroy(fd);
+                return asynError;
+            }
+            tty->haveAddress = 1;
+        }
+
+        /*
          * Connect to the remote host
+         * If the connect fails, arrange for another DNS lookup in case the
+         * problem is just that the device has DHCP'd itself an new number.
          */
         if (connect(fd, &tty->farAddr.sa, sizeof tty->farAddr.ia) < 0) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                           "Can't connect to %s: %s",
                           tty->IPDeviceName, strerror(SOCKERRNO));
             epicsSocketDestroy(fd);
+            tty->haveAddress = 0;
             return asynError;
         }
     }
@@ -288,7 +325,7 @@ connectIt(void *drvPvt, asynUser *pasynUser)
     if ((tty->socketType == SOCK_STREAM)
      && (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void *)&i, sizeof i) < 0)) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                      "Can't set %s socket NODELAY option: %s\n",
+                      "Can't set %s socket NODELAY option: %s",
                       tty->IPDeviceName, strerror(SOCKERRNO));
         epicsSocketDestroy(fd);
         return asynError;
@@ -296,7 +333,7 @@ connectIt(void *drvPvt, asynUser *pasynUser)
 #ifdef USE_POLL
     if (setNonBlock(fd, 1) < 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                               "Can't set %s O_NONBLOCK option: %s\n",
+                               "Can't set %s O_NONBLOCK option: %s",
                                        tty->IPDeviceName, strerror(SOCKERRNO));
         epicsSocketDestroy(fd);
         return asynError;
@@ -469,7 +506,7 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     }
     if (maxchars <= 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                  "%s maxchars %d. Why <=0?\n",tty->IPDeviceName,(int)maxchars);
+                  "%s maxchars %d. Why <=0?",tty->IPDeviceName,(int)maxchars);
         return asynError;
     }
     readPollmsec = (int) (pasynUser->timeout * 1000.0);
@@ -606,6 +643,7 @@ drvAsynIPPortConfigure(const char *portName,
     char protocol[6];
     int nbytes;
     asynOctet *pasynOctet;
+    int isCom = 0;
     static int firstTime = 1;
 
     /*
@@ -654,19 +692,17 @@ drvAsynIPPortConfigure(const char *portName,
         return -1;
     }
     *cp = '\0';
-    memset(&tty->farAddr, 0, sizeof tty->farAddr);
-    if(hostToIPAddr(tty->IPDeviceName, &tty->farAddr.ia.sin_addr) < 0) {
-        *cp = ':';
-        printf("drvAsynIPPortConfigure: Unknown host \"%s\".\n", tty->IPDeviceName);
-        ttyCleanup(tty);
-        return -1;
-    }
+    tty->IPHostName = epicsStrDup(tty->IPDeviceName);
     *cp = ':';
     tty->farAddr.ia.sin_port = htons(port);
     tty->farAddr.ia.sin_family = AF_INET;
     tty->flags = 0;
     if ((protocol[0] ==  '\0')
      || (epicsStrCaseCmp(protocol, "tcp") == 0)) {
+        tty->socketType = SOCK_STREAM;
+    }
+    else if (epicsStrCaseCmp(protocol, "com") == 0) {
+        isCom = 1;
         tty->socketType = SOCK_STREAM;
     }
     else if (epicsStrCaseCmp(protocol, "http") == 0) {
@@ -714,13 +750,19 @@ drvAsynIPPortConfigure(const char *portName,
     tty->octet.interfaceType = asynOctetType;
     tty->octet.pinterface  = pasynOctet;
     tty->octet.drvPvt = tty;
-    status = pasynOctetBase->initialize(tty->portName,&tty->octet,
-        (noProcessEos ? 0 : 1), (noProcessEos ? 0 : 1), 1);
+    status = pasynOctetBase->initialize(tty->portName,&tty->octet, 0, 0, 1);
     if(status != asynSuccess) {
         printf("drvAsynIPPortConfigure: pasynOctetBase->initialize failed.\n");
         ttyCleanup(tty);
         return -1;
     }
+    if (isCom && (asynInterposeCOM(tty->portName) != 0)) {
+        printf("drvAsynIPPortConfigure: asynInterposeCOM failed.\n");
+        ttyCleanup(tty);
+        return -1;
+    }
+    if (!noProcessEos)
+        asynInterposeEosConfig(tty->portName, -1, 1, 1);
     tty->pasynUser = pasynManager->createAsynUser(0,0);
     status = pasynManager->connectDevice(tty->pasynUser,tty->portName,-1);
     if(status != asynSuccess) {
