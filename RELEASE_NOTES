@@ -27,6 +27,11 @@
 # 
 #==============================================================
 #
+asyn-R4-20_1-0:   Merged in asyn4-20 from ANL; add site specific changes for SLAC
+                  to see RELEASE_NOTES look at the maintainer's website:
+                  http://www.aps.anl.gov/epics/modules/soft/asyn/R4-20/RELEASE_NOTES.html
+
+
 asyn-R4-19_1-0:   Merged in asyn4-19 from ANL; add site specific changes for SLAC
                   to see RELEASE_NOTES look at the maintainer's website:
                   http://www.aps.anl.gov/epics/modules/soft/asyn/R4-19/RELEASE_NOTES.html
