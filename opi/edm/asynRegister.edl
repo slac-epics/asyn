@@ -912,11 +912,11 @@ buttonLabel "More..."
 numPvs 4
 numDsps 5
 displayFileName {
-  0 "asynRecord.edl"
-  1 "asynRegister.edl"
-  2 "asynSerialPortSetup.edl"
-  3 "asynGPIBSetup.edl"
-  4 "asynSocketSetup.edl"
+  0 "asynScreens/asynRecord.edl"
+  1 "asynScreens/asynRegister.edl"
+  2 "asynScreens/asynSerialPortSetup.edl"
+  3 "asynScreens/asynGPIBSetup.edl"
+  4 "asynScreens/asynSocketSetup.edl"
 }
 menuLabel {
   0 "Record parameters"
