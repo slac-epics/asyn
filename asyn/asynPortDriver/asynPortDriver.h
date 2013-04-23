@@ -34,7 +34,7 @@ epicsShareFunc void* findAsynPortDriver(const char *portName);
 
 /** Base class for asyn port drivers; handles most of the bookkeeping for writing an asyn port driver
   * with standard asyn interfaces and a parameter library. */
-class epicsShareFunc asynPortDriver {
+class epicsShareClass asynPortDriver {
 public:
     asynPortDriver(const char *portName, int maxAddr, int paramTableSize, int interfaceMask, int interruptMask,
                    int asynFlags, int autoConnect, int priority, int stackSize);
@@ -56,6 +56,7 @@ public:
                                         size_t *nActual, int *eomReason);
     virtual asynStatus writeOctet(asynUser *pasynUser, const char *value, size_t maxChars,
                                         size_t *nActual);
+    virtual asynStatus flushOctet(asynUser *pasynUser);
     virtual asynStatus readInt8Array(asynUser *pasynUser, epicsInt8 *value, 
                                         size_t nElements, size_t *nIn);
     virtual asynStatus writeInt8Array(asynUser *pasynUser, epicsInt8 *value,
@@ -89,6 +90,8 @@ public:
     virtual asynStatus readGenericPointer(asynUser *pasynUser, void *pointer);
     virtual asynStatus writeGenericPointer(asynUser *pasynUser, void *pointer);
     virtual asynStatus doCallbacksGenericPointer(void *pointer, int reason, int addr);
+    virtual asynStatus readOption(asynUser *pasynUser, const char *key, char *value, int maxChars);
+    virtual asynStatus writeOption(asynUser *pasynUser, const char *key, const char *value);
     virtual asynStatus readEnum(asynUser *pasynUser, char *strings[], int values[], int severities[], size_t nElements, size_t *nIn);
     virtual asynStatus writeEnum(asynUser *pasynUser, char *strings[], int values[], int severities[], size_t nElements);
     virtual asynStatus doCallbacksEnum(char *strings[], int values[], int severities[], size_t nElements, int reason, int addr);

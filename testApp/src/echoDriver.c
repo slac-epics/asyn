@@ -33,7 +33,7 @@
 
 typedef struct deviceBuffer {
     char buffer[BUFFERSIZE];
-    int  nchars;
+    size_t  nchars;
 }deviceBuffer;
 
 typedef struct deviceInfo {
@@ -81,7 +81,7 @@ static int echoDriverInit(const char *dn, double delay,
     echoPvt    *pechoPvt;
     char       *portName;
     asynStatus status;
-    int        nbytes;
+    size_t     nbytes;
     int        attributes;
     asynOctet  *pasynOctet;
 
@@ -149,7 +149,7 @@ static void report(void *drvPvt,FILE *fp,int details)
        fprintf(fp,"        device %d connected:%s nchars = %d\n",
             i,
             (pechoPvt->device[i].connected ? "Yes" : "No"),
-            pechoPvt->device[i].buffer.nchars);
+            (int)pechoPvt->device[i].buffer.nchars);
     }
 }
 
@@ -303,7 +303,7 @@ static asynStatus echoWrite(void *drvPvt,asynUser *pasynUser,
     if(nchars>BUFFERSIZE) nchars = BUFFERSIZE;
     if(nchars>0) memcpy(pdeviceBuffer->buffer,data,nchars);
     asynPrintIO(pasynUser,ASYN_TRACEIO_DRIVER,data,nchars,
-            "echoWrite nchars %d\n",nchars);
+            "echoWrite nchars %lu\n",(unsigned long)nchars);
     pdeviceBuffer->nchars = nchars;
     if(pechoPvt->delay>0.0) epicsThreadSleep(pechoPvt->delay);
     *nbytesTransfered = nchars;
@@ -318,8 +318,8 @@ static asynStatus echoRead(void *drvPvt,asynUser *pasynUser,
     deviceBuffer *pdeviceBuffer;
     char         *pfrom,*pto;
     char         thisChar;
-    int          nremaining;
-    int          nout = 0;
+    size_t       nremaining;
+    size_t       nout = 0;
     int          addr;
     asynStatus   status;
 
@@ -390,7 +390,7 @@ static asynStatus echoRead(void *drvPvt,asynUser *pasynUser,
     pasynOctetBase->callInterruptUsers(pasynUser,pechoPvt->pasynPvt,
         data,nbytesTransfered,eomReason);
     asynPrintIO(pasynUser,ASYN_TRACEIO_DRIVER,data,nout,
-        "echoRead nbytesTransfered %d\n",*nbytesTransfered);
+        "echoRead nbytesTransfered %lu\n",(unsigned long)*nbytesTransfered);
     return status;
 }
 

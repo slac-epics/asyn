@@ -26,7 +26,7 @@ static const char *driverName="testErrors";
 
 #define CALLBACK_PERIOD 0.5
 
-static char *statusEnumStrings[MAX_STATUS_ENUMS] = {
+static const char *statusEnumStrings[MAX_STATUS_ENUMS] = {
     "asynSuccess",
     "asynTimeout",
     "asynOverFlow",
@@ -37,14 +37,14 @@ static char *statusEnumStrings[MAX_STATUS_ENUMS] = {
 static int statusEnumValues[MAX_STATUS_ENUMS]     = {0, 1, 2, 3, 4, 5};
 static int statusEnumSeverities[MAX_STATUS_ENUMS] = {0, 2, 1, 2, 3, 3};
 
-static char *allInt32EnumStrings[MAX_INT32_ENUMS] = {
+static const char *allInt32EnumStrings[MAX_INT32_ENUMS] = {
     "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
     "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen"
 };
 static int allInt32EnumValues[MAX_INT32_ENUMS]     =  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 static int allInt32EnumSeverities[MAX_INT32_ENUMS] =  {0, 0, 0, 0, 1, 1, 1, 1, 1, 2,  2,  2,  2,  3,  3,  3};
 
-static char *allUInt32EnumStrings[MAX_UINT32_ENUMS] =  {"Zero", "One", "Three"};
+static const char *allUInt32EnumStrings[MAX_UINT32_ENUMS] =  {"Zero", "One", "Three"};
 static int allUInt32EnumValues[MAX_UINT32_ENUMS]     = {0, 1, 3};
 static int allUInt32EnumSeverities[MAX_UINT32_ENUMS] = {0, 1, 1};
 
@@ -57,11 +57,11 @@ static void callbackTask(void *drvPvt);
 testErrors::testErrors(const char *portName) 
    : asynPortDriver(portName, 
                     1, /* maxAddr */ 
-                    NUM_PARAMS,
+                    (int)NUM_PARAMS,
                      /* Interface mask */
                     asynInt32Mask       | asynFloat64Mask    | asynUInt32DigitalMask | asynOctetMask | 
                       asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask    | asynFloat32ArrayMask | asynFloat64ArrayMask |
-                      asynEnumMask      | asynDrvUserMask,
+                      asynOptionMask    | asynEnumMask      | asynDrvUserMask,
                     /* Interrupt mask */
                     asynInt32Mask       | asynFloat64Mask    | asynUInt32DigitalMask | asynOctetMask | 
                       asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask    | asynFloat32ArrayMask | asynFloat64ArrayMask |
@@ -95,6 +95,7 @@ testErrors::testErrors(const char *portName)
     }
     setIntegerParam(P_StatusReturn, asynSuccess);
     setIntegerParam(P_Int32Value, 0);
+    setDoubleParam(P_Float64Value, 0.0);
     setIntegerParam(P_EnumOrder, 0);
     setEnums();
     // Need to force callbacks with the interruptMask once 
@@ -125,6 +126,7 @@ static void callbackTask(void *drvPvt)
 void testErrors::callbackTask(void)
 {
     asynStatus currentStatus;
+    int itemp;
     epicsInt32 iVal;
     epicsFloat64 dVal;
     int i;
@@ -133,7 +135,7 @@ void testErrors::callbackTask(void)
     /* Loop forever */    
     while (1) {
         lock();
-        getIntegerParam(P_StatusReturn, (int*)&currentStatus);
+        getIntegerParam(P_StatusReturn, &itemp); currentStatus = (asynStatus)itemp;
         getIntegerParam(P_Int32Value, &iVal);
         iVal++;
         if (iVal > 15) iVal=0;
@@ -152,7 +154,7 @@ void testErrors::callbackTask(void)
             int8ArrayValue_[i]    = iVal;
             int16ArrayValue_[i]   = iVal;
             int32ArrayValue_[i]   = iVal;
-            float32ArrayValue_[i] = dVal;
+            float32ArrayValue_[i] = (epicsFloat32)dVal;
             float64ArrayValue_[i] = dVal;
         }
         callParamCallbacks();
@@ -206,11 +208,12 @@ asynStatus testErrors::writeInt32(asynUser *pasynUser, epicsInt32 value)
 {
     int function = pasynUser->reason;
     asynStatus status = asynSuccess;
+    int itemp;
     const char *paramName;
     const char* functionName = "writeInt32";
 
     /* Get the current error status */
-    getIntegerParam(P_StatusReturn, (int*)&status);
+    getIntegerParam(P_StatusReturn, &itemp); status = (asynStatus)itemp;
 
     /* Fetch the parameter string name for use in debugging */
     getParamName(function, &paramName);
@@ -247,11 +250,12 @@ asynStatus testErrors::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 {
     int function = pasynUser->reason;
     asynStatus status = asynSuccess;
+    int itemp;
     const char *paramName;
     const char* functionName = "writeFloat64";
 
     /* Get the current error status */
-    getIntegerParam(P_StatusReturn, (int*)&status);
+    getIntegerParam(P_StatusReturn, &itemp);  status = (asynStatus)itemp;
 
     /* Fetch the parameter string name for use in debugging */
     getParamName(function, &paramName);
@@ -283,11 +287,12 @@ asynStatus testErrors::writeUInt32Digital(asynUser *pasynUser, epicsUInt32 value
 {
     int function = pasynUser->reason;
     asynStatus status = asynSuccess;
+    int itemp;
     const char *paramName;
     const char* functionName = "writeUInt32D";
 
     /* Get the current error status */
-    getIntegerParam(P_StatusReturn, (int*)&status);
+    getIntegerParam(P_StatusReturn, &itemp); status = (asynStatus)itemp;
 
     /* Fetch the parameter string name for use in debugging */
     getParamName(function, &paramName);
@@ -323,10 +328,11 @@ asynStatus testErrors::writeOctet(asynUser *pasynUser, const char *value,
 {
     int function = pasynUser->reason;
     asynStatus status = asynSuccess;
+    int itemp;
     const char *functionName = "writeOctet";
 
     /* Get the current error status */
-    getIntegerParam(P_StatusReturn, (int*)&status);
+    getIntegerParam(P_StatusReturn, &itemp); status = (asynStatus)itemp;
 
     /* Set the parameter in the parameter library. */
     setStringParam(function, (char *)value);
@@ -385,6 +391,31 @@ asynStatus testErrors::readEnum(asynUser *pasynUser, char *strings[], int values
     return asynSuccess;   
 
 }
+
+asynStatus testErrors::readOption(asynUser *pasynUser, const char *key, char *value, int maxChars)
+{
+    asynStatus status = asynSuccess;
+    
+    strcpy(value, "");
+    if (strcmp(key, "key1") == 0) strncpy(value, "value1", maxChars);
+    else if (strcmp(key, "key2") == 0) strncpy(value, "value2", maxChars);
+    else status = asynError;
+    asynPrint(pasynUser, ASYN_TRACEIO_DRIVER,
+        "testErrors::readOption, key=%s, value=%s, status=%d\n",
+        key, value, status);
+    return status;
+}
+
+asynStatus testErrors::writeOption(asynUser *pasynUser, const char *key, const char *value)
+{
+    asynStatus status = asynSuccess;
+    
+    asynPrint(pasynUser, ASYN_TRACEIO_DRIVER,
+        "testErrors::writeOption, key=%s, value=%s\n",
+        key, value);
+    return status;
+}
+
 
 template <typename epicsType> 
 asynStatus testErrors::doReadArray(asynUser *pasynUser, epicsType *value, 
@@ -392,11 +423,11 @@ asynStatus testErrors::doReadArray(asynUser *pasynUser, epicsType *value,
 {
     int function = pasynUser->reason;
     size_t ncopy = MAX_ARRAY_POINTS;
-    asynStatus status = asynSuccess;
+    int status = asynSuccess;
     const char *functionName = "doReadArray";
 
     /* Get the current error status */
-    getIntegerParam(P_StatusReturn, (int*)&status);
+    getIntegerParam(P_StatusReturn, &status);
 
     if (nElements < ncopy) ncopy = nElements;
     if (function == paramIndex) {
@@ -412,7 +443,7 @@ asynStatus testErrors::doReadArray(asynUser *pasynUser, epicsType *value,
         asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
               "%s:%s: function=%d\n", 
               driverName, functionName, function);
-    return status;
+    return (asynStatus)status;
 }
     
 asynStatus testErrors::readInt8Array(asynUser *pasynUser, epicsInt8 *value, 
