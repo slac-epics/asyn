@@ -31,8 +31,8 @@ typedef struct devAsynWfPvt{ \
     asynStatus      status; \
     epicsAlarmCondition alarmStat; \
     epicsAlarmSeverity alarmSevr; \
-    int             gotValue; /*For interruptCallbackInput */ \
-    int             nord; \
+    int             gotValue; /* For interruptCallbackInput */ \
+    epicsUInt32     nord; \
     INTERRUPT       interruptCallback; \
     char            *portName; \
     char            *userParam; \
@@ -162,7 +162,7 @@ static long getIoIntInfo(int cmd, dbCommon *pr, IOSCANPVT *iopvt) \
            pPvt->interruptCallback, pPvt, &pPvt->registrarPvt); \
         if(status!=asynSuccess) { \
             asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR, \
-                      "%s %s registerInterruptUser %s\n", \
+                      "%s %s::getIoIntInfo registerInterruptUser %s\n", \
                       pr->name, driverName, pPvt->pasynUser->errorMessage); \
         } \
     } else { \
@@ -173,8 +173,8 @@ static long getIoIntInfo(int cmd, dbCommon *pr, IOSCANPVT *iopvt) \
              pPvt->pasynUser, pPvt->registrarPvt); \
         if(status!=asynSuccess) { \
             asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR, \
-                      "%s %s cancelInterruptUser %s\n", \
-                      pr->name,pPvt->pasynUser->errorMessage); \
+                      "%s %s::getIoIntInfo cancelInterruptUser %s\n", \
+                      pr->name, driverName,pPvt->pasynUser->errorMessage); \
         } \
     } \
     *iopvt = pPvt->ioScanPvt; \
@@ -202,8 +202,8 @@ static long processCommon(dbCommon *pr) \
         if(pPvt->canBlock) pr->pact = 0; \
         if (pPvt->status != asynSuccess) { \
             asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR, \
-                "%s processCommon, error queuing request %s\n", \
-                 pr->name, pPvt->pasynUser->errorMessage); \
+                "%s %s::processCommon, error queuing request %s\n", \
+                 pr->name, driverName, pPvt->pasynUser->errorMessage); \
         } \
     } \
     if (pPvt->status != asynSuccess) { \
@@ -214,8 +214,13 @@ static long processCommon(dbCommon *pr) \
     if (pPvt->gotValue) { \
         pwf->nord = pPvt->nord; \
         pwf->udf = 0; \
+        pPvt->gotValue--; \
+        if (pPvt->gotValue) { \
+            asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE, \
+                "%s %s::processCommon, warning, multiple interrupt callbacks between processing\n", \
+                 pr->name, driverName); \
+        } \
     } \
-    pPvt->gotValue = 0; \
     pPvt->status = asynSuccess; \
     return 0; \
 }  \
@@ -257,7 +262,7 @@ static void callbackWf(asynUser *pasynUser) \
     pwf->time = pasynUser->timestamp; \
     if (status == asynSuccess) { \
         pwf->udf=0; \
-        pwf->nord = nread; \
+        pwf->nord = (epicsUInt32)nread; \
     } else { \
         asynPrint(pasynUser, ASYN_TRACE_ERROR, \
               "%s %s::callbackWf read error %s\n", \
@@ -285,10 +290,10 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,  \
     if (len > pwf->nelm) len = pwf->nelm; \
     for (i=0; i<(int)len; i++) pData[i] = value[i]; \
     pwf->time = pasynUser->timestamp; \
-    dbScanUnlock((dbCommon *)pwf); \
-    pPvt->gotValue = 1; \
-    pPvt->nord = len; \
+    pPvt->gotValue++; \
+    pPvt->nord = (epicsUInt32)len; \
     if (pPvt->status == asynSuccess) pPvt->status = pasynUser->auxStatus; \
+    dbScanUnlock((dbCommon *)pwf); \
     scanIoRequest(pPvt->ioScanPvt); \
 } \
  \

@@ -321,7 +321,7 @@ static long getIoIntInfo(int cmd, dbCommon *pr, IOSCANPVT *iopvt)
 static void setEnums(char *outStrings, int *outVals, epicsEnum16 *outSeverities, char *inStrings[], int *inVals, int *inSeverities, 
                      size_t numIn, size_t numOut)
 {
-    int i;
+    size_t i;
     
     for (i=0; i<numOut; i++) {
         if (outStrings) outStrings[i*MAX_ENUM_STRING_SIZE] = '\0';
@@ -344,7 +344,7 @@ static void processCallbackInput(asynUser *pasynUser)
         &pPvt->result.value,pPvt->mask);
     if (pPvt->result.status == asynSuccess) {
         asynPrint(pasynUser, ASYN_TRACEIO_DEVICE,
-            "%s devAsynUInt32Digital::process value=%lu\n",
+            "%s devAsynUInt32Digital::process value=%u\n",
             pr->name,pPvt->result.value);
     } else {
         asynPrint(pasynUser, ASYN_TRACE_ERROR,
@@ -363,7 +363,7 @@ static void processCallbackOutput(asynUser *pasynUser)
         pPvt->result.value,pPvt->mask);
     if(pPvt->result.status == asynSuccess) {
         asynPrint(pasynUser, ASYN_TRACEIO_DEVICE,
-            "%s devAsynUInt32Digital process value %lu\n",pr->name,pPvt->result.value);
+            "%s devAsynUInt32Digital process value %u\n",pr->name,pPvt->result.value);
     } else {
        asynPrint(pasynUser, ASYN_TRACE_ERROR,
            "%s devAsynUInt32Digital process error %s\n",
@@ -380,7 +380,7 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,
     ringBufferElement *rp;
 
     asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
-        "%s devAsynUInt32Digital::interruptCallbackInput new value=%lu\n",
+        "%s devAsynUInt32Digital::interruptCallbackInput new value=%u\n",
         pr->name, value);
     /* There is a problem.  A driver could be calling us with a value after
      * this record has registered for callbacks but before EPICS has set interruptAccept,
@@ -395,6 +395,7 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,
      * Instead we just return.  There will then be nothing in the ring buffer, so the first
      * read will do a read from the driver, which should be OK. */
     if (!interruptAccept) return;
+    epicsMutexLock(pPvt->mutexId);
     rp = &pPvt->ringBuffer[pPvt->ringHead];
     rp->value = value;
     rp->time = pasynUser->timestamp;
@@ -425,7 +426,7 @@ static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,
     int nextHead;
 
     asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
-        "%s devAsynUInt32Digital::interruptCallbackOutput new value=%lu\n",
+        "%s devAsynUInt32Digital::interruptCallbackOutput new value=%u\n",
         pr->name, value);
     epicsMutexLock(pPvt->mutexId);
     nextHead = (pPvt->ringHead==pPvt->ringSize) ? 0 : pPvt->ringHead+1;
@@ -633,14 +634,12 @@ static long processBo(boRecord *pr)
 
 static long initLi(longinRecord *pr)
 {
-    devPvt *pPvt;
     asynStatus status;
 
     status = initCommon((dbCommon *)pr,&pr->inp,
         processCallbackInput,interruptCallbackInput, NULL,
         0, NULL, NULL, NULL);
     if (status != asynSuccess) return 0;
-    pPvt = pr->dpvt;
     return 0;
 }
 
@@ -902,12 +901,22 @@ static long initMbboDirect(mbboDirectRecord *pr)
     pPvt = pr->dpvt;
     pr->mask = pPvt->mask;
     pr->shft = computeShift(pPvt->mask);
+
     /* Read the current value from the device */
     status = pasynUInt32DigitalSyncIO->read(pPvt->pasynUserSync,
                       &value, pPvt->mask, pPvt->pasynUser->timeout);
     if (status == asynSuccess) {
-        pr->rval = value & pr->mask;
-        return 0;
+        epicsUInt8 *pBn = &pr->b0;
+        int i;
+
+        value &= pr->mask;
+        if (pr->shft > 0) value >>= pr->shft;
+        pr->val =  (unsigned short) value;
+        pr->udf = FALSE;
+        for (i = 0; i < 16; i++) {
+            *pBn++ = !! (value & 1);
+            value >>= 1;
+        }
     }
     return 2;
 }

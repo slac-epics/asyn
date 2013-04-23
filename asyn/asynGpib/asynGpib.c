@@ -30,8 +30,12 @@
 #include "asynGpibDriver.h"
 
 #define BOOL int
+#ifndef TRUE
 #define TRUE 1
+#endif
+#ifndef FALSE
 #define FALSE 0
+#endif
 #define SRQTIMEOUT .01
 #define MAX_POLL 5
 
@@ -414,7 +418,7 @@ static asynStatus readIt(void *drvPvt,asynUser *pasynUser,
             nt--;
         }
     }
-    if(nt<maxchars) data[nt] = 0;
+    if(nt<(int)maxchars) data[nt] = 0;
     if((nt==maxchars) && eomReason) *eomReason |= ASYN_EOM_CNT;
     *nbytesTransfered = (size_t)nt;
     pasynOctetBase->callInterruptUsers(pasynUser,pgpibPvt->pasynPvt,

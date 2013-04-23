@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * $Id: drvAsynSerialPort.c,v 1.1.1.7 2012/06/25 14:23:49 ernesto Exp $
+ * $Id: drvAsynSerialPort.c,v 1.49 2009-08-13 20:35:31 norume Exp $
  */
 
 #include <string.h>
@@ -452,7 +452,7 @@ timeoutHandler(void *p)
     tcflush(tty->fd, TCOFLUSH);
 #endif
 #ifdef vxWorks
-    ioctl(tty->fd, FIOCANCEL, NULL);
+    ioctl(tty->fd, FIOCANCEL, 0);
     /*
      * Since it is possible, though unlikely, that we got here before the
      * slow system call actually started, we arrange to poke the thread
@@ -578,7 +578,7 @@ static asynStatus writeIt(void *drvPvt, asynUser *pasynUser,
     asynPrint(pasynUser, ASYN_TRACE_FLOW,
                             "%s write.\n", tty->serialDeviceName);
     asynPrintIO(pasynUser, ASYN_TRACEIO_DRIVER, data, numchars,
-                            "%s write %d\n", tty->serialDeviceName, numchars);
+                            "%s write %lu\n", tty->serialDeviceName, (unsigned long)numchars);
     if (tty->fd < 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                                 "%s disconnected:", tty->serialDeviceName);
@@ -775,8 +775,8 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
         data[nRead] = 0;
     else if (gotEom)
         *gotEom = ASYN_EOM_CNT;
-    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s read %d, return %d\n",
-                            tty->serialDeviceName, *nbytesTransfered, status);
+    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s read %lu, return %d\n",
+                            tty->serialDeviceName, (unsigned long)*nbytesTransfered, status);
     return status;
 }
 

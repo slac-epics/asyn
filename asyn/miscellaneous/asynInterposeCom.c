@@ -2,7 +2,7 @@
  * RFC 2117 support for remote serial ports
  * 
  * Author: W. Eric Norum
- * "$Date: 2011/12/03 18:02:24 $ (UTC)"
+ * "$Date: 2011/01/12 00:13:59 $ (UTC)"
  */
 
 /************************************************************************\
@@ -547,7 +547,7 @@ setOption(void *ppvt, asynUser *pasynUser, const char *key, const char *val)
             return asynError;
         }
         xBuf[0] = CPO_SET_STOPSIZE;
-        xBuf[1] = b;
+        xBuf[1] = (char)b;
         status = sbComPortOption(pinterposePvt, pasynUser, xBuf, 2, rBuf);
         if (status == asynSuccess) {
             pinterposePvt->stop = rBuf[0] & 0xFF;

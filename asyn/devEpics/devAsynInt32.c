@@ -361,7 +361,7 @@ static long getIoIntInfo(int cmd, dbCommon *pr, IOSCANPVT *iopvt)
 static void setEnums(char *outStrings, int *outVals, epicsEnum16 *outSeverities, char *inStrings[], int *inVals, int *inSeverities, 
                      size_t numIn, size_t numOut)
 {
-    int i;
+    size_t i;
     
     for (i=0; i<numOut; i++) {
         if (outStrings) outStrings[i*MAX_ENUM_STRING_SIZE] = '\0';
@@ -903,14 +903,12 @@ static long processLo(longoutRecord *pr)
 
 static long initBi(biRecord *pr)
 {
-    devInt32Pvt *pPvt;
     asynStatus status;
 
     status = initCommon((dbCommon *)pr,&pr->inp,
         processCallbackInput,interruptCallbackInput, interruptCallbackEnumBi,
         2, (char*)&pr->znam, NULL, &pr->zsv);
     if (status != asynSuccess) return 0;
-    pPvt = pr->dpvt;
     return 0;
 }
 
@@ -999,14 +997,12 @@ static long processBo(boRecord *pr)
 
 static long initMbbi(mbbiRecord *pr)
 {
-    devInt32Pvt *pPvt;
     asynStatus status;
 
     status = initCommon((dbCommon *)pr,&pr->inp,
         processCallbackInput,interruptCallbackInput, interruptCallbackEnumMbbi,
         MAX_ENUM_STATES, (char*)&pr->zrst, (int*)&pr->zrvl, &pr->zrsv);
     if (status != asynSuccess) return 0;
-    pPvt = pr->dpvt;
     if(pr->nobt == 0) pr->mask = 0xffffffff;
     pr->mask <<= pr->shft;
     return 0;
