@@ -509,7 +509,7 @@ asynStatus paramList::octetCallback(int command, int addr)
             (address == addr)) {
             pInterrupt->callback(pInterrupt->userPvt,
                                  pInterrupt->pasynUser,
-                                 value, strlen(value), ASYN_EOM_END);
+                                 value, strlen(value)+1, ASYN_EOM_END);
         }
         pnode = (interruptNode *)ellNext(&pnode->node);
     }
@@ -570,14 +570,13 @@ asynStatus paramList::callCallbacks()
 /** Reports on status of the paramList
   * \param[in] fp The file pointer on which report information will be written
   * \param[in] details The level of report detail desired. Prints the number of parameters in the list,
-  * and if details >1 also prints the index, data type, name, and value of each parameter.
+  * and the index, data type, name, and value of each parameter.
  */
 void paramList::report(FILE *fp, int details)
 {
     int i;
 
     fprintf(fp, "Number of parameters is: %d\n", this->nVals );
-    if (details <= 1) return;
     for (i=0; i<this->nVals; i++)
     {
         this->vals[i]->report(i, fp, details);
