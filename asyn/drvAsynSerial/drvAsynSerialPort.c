@@ -11,7 +11,7 @@
 ***********************************************************************/
 
 /*
- * $Id: drvAsynSerialPort.c,v 1.49 2009-08-13 20:35:31 norume Exp $
+ * $Id: drvAsynSerialPort.c,v 1.1.1.8 2013/04/23 14:02:24 ernesto Exp $
  */
 
 #include <string.h>
