@@ -49,7 +49,7 @@ void simTask(void *drvPvt);
 testAsynPortDriver::testAsynPortDriver(const char *portName, int maxPoints) 
    : asynPortDriver(portName, 
                     1, /* maxAddr */ 
-                    NUM_SCOPE_PARAMS,
+                    (int)NUM_SCOPE_PARAMS,
                     asynInt32Mask | asynFloat64Mask | asynFloat64ArrayMask | asynEnumMask | asynDrvUserMask, /* Interface mask */
                     asynInt32Mask | asynFloat64Mask | asynFloat64ArrayMask | asynEnumMask,  /* Interrupt mask */
                     0, /* asynFlags.  This driver does not block and it is not multi-device, so flag is 0 */
@@ -156,7 +156,7 @@ void testAsynPortDriver::simTask(void)
         getDoubleParam(P_UpdateTime, &updateTime);
         getIntegerParam(P_Run, &run);
         if (run) epicsEventWaitWithTimeout(eventId_, updateTime);
-        else     epicsEventWait(eventId_);
+        else     (void) epicsEventWait(eventId_);
         /* run could have changed while we were waiting */
         getIntegerParam(P_Run, &run);
         if (!run) continue;
@@ -301,10 +301,11 @@ asynStatus testAsynPortDriver::readFloat64Array(asynUser *pasynUser, epicsFloat6
 {
     int function = pasynUser->reason;
     size_t ncopy;
+    int itemp;
     asynStatus status = asynSuccess;
     const char *functionName = "readFloat64Array";
 
-    getIntegerParam(P_MaxPoints, (epicsInt32 *)&ncopy);
+    getIntegerParam(P_MaxPoints, &itemp); ncopy = itemp;
     if (nElements < ncopy) ncopy = nElements;
     if (function == P_Waveform) {
         memcpy(value, pData_, ncopy*sizeof(epicsFloat64));

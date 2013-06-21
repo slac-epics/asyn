@@ -247,7 +247,7 @@ static void vxiDisconnectException(vxiPort *pvxiPort,int addr)
     if(status!=asynSuccess) {
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
             "%s adr %d vxiDisconnectException exceptionDisconnect failed %s\n",
-            pvxiPort->portName,addr,pasynUser->errorMessageSize);
+            pvxiPort->portName,addr,pasynUser->errorMessage);
     }
     status = pasynManager->disconnect(pasynUser);
     assert(status==asynSuccess);
@@ -290,7 +290,7 @@ static BOOL vxiCreateDeviceLink(vxiPort * pvxiPort,
             pvxiPort->maxRecvSize = crLinkR.maxRecvSize;
         } else if(pvxiPort->maxRecvSize!=crLinkR.maxRecvSize) {
             asynPrint(pasynUser,ASYN_TRACE_ERROR,
-                "%s vxiCreateDeviceLink maxRecvSize changed from %lu to %lu\n",
+                "%s vxiCreateDeviceLink maxRecvSize changed from %lu to %u\n",
                             devName,pvxiPort->maxRecvSize,crLinkR.maxRecvSize);
         }
         if(pvxiPort->abortPort==0) {
@@ -561,7 +561,7 @@ static enum clnt_stat clientIoCall(vxiPort * pvxiPort,asynUser *pasynUser,
     }
     while(TRUE) {
         stat = clnt_call(pvxiPort->rpcClient,
-            req, proc1, addr1, proc2, addr2, pvxiPort->vxiRpcTimeout);
+            req, proc1, addr1, proc2, addr2, rpcTimeout);
         if(timeout>=0.0 || stat!=RPC_TIMEDOUT) break;
     }
     if(stat!=RPC_SUCCESS) {
@@ -1315,7 +1315,7 @@ static asynStatus vxiGetEos(void *drvPvt,asynUser *pasynUser,
         *eoslen = 1;
     }
     asynPrintIO(pasynUser, ASYN_TRACE_FLOW, eos, *eoslen,
-            "%s vxiGetEos %d\n",pvxiPort->portName,eoslen);
+            "%s vxiGetEos %d\n",pvxiPort->portName, *eoslen);
     return asynSuccess;
 }
 
@@ -1326,7 +1326,6 @@ static asynStatus vxiAddressedCmd(void *drvPvt,asynUser *pasynUser,
     int      nWrite;
     int     addr;
     devLink *pdevLink;
-    Device_Link lid;
     char    addrBuffer[2];
     int     lenCmd = 0;
     int     primary,secondary;
@@ -1347,9 +1346,8 @@ static asynStatus vxiAddressedCmd(void *drvPvt,asynUser *pasynUser,
     if(!pdevLink) return asynError;
     if(!vxiIsPortConnected(pvxiPort,pasynUser)) return asynError;
     if(!pdevLink->connected) return -1;
-    lid = pdevLink->lid;
     asynPrint(pasynUser, ASYN_TRACE_FLOW,
-        "%s %d vxiAddressedCmd %2.2x\n",pvxiPort->portName,addr,data);
+        "%s %d vxiAddressedCmd %2.2x\n",pvxiPort->portName,addr, *data);
     asynPrintIO(pasynUser,ASYN_TRACEIO_DRIVER,
         data,length,"%s %d vxiAddressedCmd\n",pvxiPort->portName,addr);
     nWrite = vxiWriteCmd(pvxiPort,pasynUser,addrBuffer,lenCmd);

@@ -14,7 +14,7 @@
  <tbody>
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
-   <div id="projectname">asyn&#160;<span id="projectnumber">4-20</span></div>
+   <div id="projectname">asyn&#160;<span id="projectnumber">4-21</span></div>
   </td>
  </tr>
  </tbody>
@@ -66,6 +66,7 @@ This is the complete list of members for <a class="el" href="classtest_asyn_port
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a03d74bfe552845d9624d158dc875b9a1">drvUserGetType</a>(asynUser *pasynUser, const char **pptypeName, size_t *psize)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#aa74032eec9808e5c939996aca70a4d7c">findParam</a>(const char *name, int *index)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a9efbeb78ceb5d1ad7d84545f9ee8379b">findParam</a>(int list, const char *name, int *index)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
+  <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a14f7c0f90f7036209518d3d7b9288d7d">flushOctet</a>(asynUser *pasynUser)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#afa59c628c1de272f1802d91e2abda9b1">getAddress</a>(asynUser *pasynUser, int *address)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a383d377be74285d173715caebba856c9">getBounds</a>(asynUser *pasynUser, epicsInt32 *low, epicsInt32 *high)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a6c4515dec6ebceab3796969ae9d3305d">getDoubleParam</a>(int index, double *value)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
@@ -114,6 +115,7 @@ This is the complete list of members for <a class="el" href="classtest_asyn_port
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a836cebf0cba617f9f99f5a498e20281c">readInt32Array</a>(asynUser *pasynUser, epicsInt32 *value, size_t nElements, size_t *nIn)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#ae3402f6a7d03b031672c085a1a36c39c">readInt8Array</a>(asynUser *pasynUser, epicsInt8 *value, size_t nElements, size_t *nIn)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a5a1d6c60d26f18eb256f397c6d1db3a8">readOctet</a>(asynUser *pasynUser, char *value, size_t maxChars, size_t *nActual, int *eomReason)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
+  <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a10fbd5b4350ba08e7d4d01b0150b86ab">readOption</a>(asynUser *pasynUser, const char *key, char *value, int maxChars)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a61e02fb1d9f5f265ea33c6b17b6ac623">readUInt32Digital</a>(asynUser *pasynUser, epicsUInt32 *value, epicsUInt32 mask)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a92af1c2ca1851d26b5140cb3357724c7">report</a>(FILE *fp, int details)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a5403d81341bc5a391c0419593e041e4c">reportGetParamErrors</a>(asynStatus status, int index, int list, const char *functionName)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
@@ -147,10 +149,11 @@ This is the complete list of members for <a class="el" href="classtest_asyn_port
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#af3e0be717536185b760eb5c048a7dcf7">writeInt32Array</a>(asynUser *pasynUser, epicsInt32 *value, size_t nElements)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a8521c92d9de5e498e64b45a8f83e15f5">writeInt8Array</a>(asynUser *pasynUser, epicsInt8 *value, size_t nElements)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#af7ba9c491b7a486198b9c90ca9b07894">writeOctet</a>(asynUser *pasynUser, const char *value, size_t maxChars, size_t *nActual)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
+  <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a590ea0304283d74398e5669565d2671c">writeOption</a>(asynUser *pasynUser, const char *key, const char *value)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a9879ac9d8d7cf814722bae9ee30e3e3b">writeUInt32Digital</a>(asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask)</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
   <tr class="memlist"><td><a class="el" href="classasyn_port_driver.html#a74f2e1d0b2abfe03aa9bbe06391c521d">~asynPortDriver</a>()</td><td><a class="el" href="classasyn_port_driver.html">asynPortDriver</a></td><td><code> [virtual]</code></td></tr>
 </table></div>
-<hr class="footer"/><address class="footer"><small>Generated on Thu Aug 30 2012 for asyn by&#160;
+<hr class="footer"/><address class="footer"><small>Generated on Mon Feb 18 2013 for asyn by&#160;
 <a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.7.4 </small></address>
 </body>

@@ -7,6 +7,7 @@ include $(TOP)/RELEASE_SITE
 # ===============================================================
 BASE_MODULE_VERSION=R3.14.12-0.4.0
 EPICS_BASE=$(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
+-include $(TOP)/../configure/EPICS_BASE.$(EPICS_HOST_ARCH)
 
 #
 # PCDS Note: Compiling with LINUX_GPIB=YES requires that the
@@ -23,7 +24,7 @@ EPICS_BASE=$(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
 # IPAC is only needed for Greensprings IP-488 driver 
 #IPAC_MODULE_VERSION=R3.0.0-1.0.4
 # SNCSEQ is only needed to build the asyn test app named testIPServerApp
-#SNCSEQ_MODULE_VERSION=R2.1.7-0.1.0
+#SNCSEQ_MODULE_VERSION=R2.1.10-0.1.0
 
 # ============================================================
 # External Support module path definitions

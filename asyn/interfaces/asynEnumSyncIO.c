@@ -135,19 +135,19 @@ static asynStatus writeOp(asynUser *pasynUser, char *strings[], int values[], in
     ioPvt      *pioPvt = (ioPvt *)pasynUser->userPvt;
 
     pasynUser->timeout = timeout;
-    status = pasynManager->lockPort(pasynUser);
+    status = pasynManager->queueLockPort(pasynUser);
     if(status!=asynSuccess) {
         return status;
     }
     status = pioPvt->pasynEnum->write(pioPvt->enumPvt, pasynUser, strings, values, severities, nElements);
     if (status==asynSuccess) {
-        size_t i;
-        for (i=0; i<nElements; i++) {
+        int i;
+        for (i=0; i<(int)nElements; i++) {
           asynPrint(pasynUser, ASYN_TRACEIO_DEVICE, 
                     "asynEnumSyncIO wrote: %d string=%s, value=%d severity=%d\n", i, strings[i], values[i], severities[i]);
         }
     }
-    unlockStatus = pasynManager->unlockPort(pasynUser);
+    unlockStatus = pasynManager->queueUnlockPort(pasynUser);
     if (unlockStatus != asynSuccess) {
         return unlockStatus;
     }
@@ -160,19 +160,19 @@ static asynStatus readOp(asynUser *pasynUser, char *strings[], int values[], int
     asynStatus status, unlockStatus;
 
     pasynUser->timeout = timeout;
-    status = pasynManager->lockPort(pasynUser);
+    status = pasynManager->queueLockPort(pasynUser);
     if(status!=asynSuccess) {
         return status;
     }
     status = pioPvt->pasynEnum->read(pioPvt->enumPvt, pasynUser, strings, values, severities, nElements, nIn);
     if (status==asynSuccess) {
-        size_t i;
-        for (i=0; i<*nIn; i++) {
+        int i;
+        for (i=0; i<(int)*nIn; i++) {
           asynPrint(pasynUser, ASYN_TRACEIO_DEVICE, 
                     "asynEnumSyncIO read: %d string=%s, value=%d, severity=%d\n", i, strings[i], values[i], severities[i]);
         }
     }
-    unlockStatus = pasynManager->unlockPort(pasynUser);
+    unlockStatus = pasynManager->queueUnlockPort(pasynUser);
     if (unlockStatus != asynSuccess) {
         return unlockStatus;
     }
