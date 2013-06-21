@@ -21,9 +21,9 @@ EPICS_BASE=$(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
 # Define the version(s) of any other needed modules 
 # ===============================================================
 # IPAC is only needed for Greensprings IP-488 driver 
-#IPAC_MODULE_VERSION=R2.8.4-1.0.0
+#IPAC_MODULE_VERSION=R3.0.0-1.0.4
 # SNCSEQ is only needed to build the asyn test app named testIPServerApp
-#SNCSEQ_MODULE_VERSION=R2.0.11-1.0.0
+#SNCSEQ_MODULE_VERSION=R2.1.7-0.1.0
 
 # ============================================================
 # External Support module path definitions

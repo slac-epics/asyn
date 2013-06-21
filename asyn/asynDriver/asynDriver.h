@@ -16,13 +16,14 @@
 #define ASYNDRIVER_H
 
 #include <epicsStdio.h>
+#include <epicsTime.h>
 #include <ellLib.h>
 #include <shareLib.h>
 
 /* Version number names similar to those provide by base
  * These macros are always numeric */
 #define ASYN_VERSION       4
-#define ASYN_REVISION     19
+#define ASYN_REVISION     20
 #define ASYN_MODIFICATION  0
 
 #ifdef __cplusplus
@@ -46,18 +47,19 @@ typedef enum {
 }asynQueuePriority;
 
 typedef struct asynUser {
-    char *errorMessage;
-    int errorMessageSize;
+    char          *errorMessage;
+    int            errorMessageSize;
     /* timeout must be set by the user */
-    double       timeout;  /*Timeout for I/O operations*/
-    void         *userPvt; 
-    void         *userData; 
+    double         timeout;  /*Timeout for I/O operations*/
+    void          *userPvt; 
+    void          *userData; 
     /*The following is for user to/from driver communication*/
-    void         *drvUser;
+    void          *drvUser;
     /*The following is normally set by driver*/
-    int          reason;
+    int            reason;
+    epicsTimeStamp timestamp;
     /* The following are for additional information from method calls */
-    int          auxStatus; /*For auxillary status*/
+    int            auxStatus; /*For auxillary status*/
 }asynUser;
 
 typedef struct asynInterface{
