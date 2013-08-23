@@ -1140,9 +1140,10 @@ static asynStatus vxiRead(void *drvPvt,asynUser *pasynUser,
             clntStat = clientIoCall(pvxiPort, pasynUser, device_read,
                 (const xdrproc_t) xdr_Device_ReadParms,(void *) &devReadP,
                 (const xdrproc_t) xdr_Device_ReadResp,(void *) &devReadR);
-            if(devReadP.io_timeout!=ULONG_MAX
-            || devReadR.error!=VXI_IOTIMEOUT
-            || devReadR.data.data_len>0) break;
+            if(	devReadP.io_timeout		!= UINT_MAX
+            ||	devReadR.error			!= VXI_IOTIMEOUT
+            ||	devReadR.data.data_len	> 0 )
+				break;
         }
         if(clntStat != RPC_SUCCESS) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,

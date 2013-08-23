@@ -490,7 +490,7 @@ asynStatus paramList::octetCallback(int command, int addr)
     asynStandardInterfaces *pInterfaces = this->pasynInterfaces;
     int address;
     char *value;
-    asynStatus status;
+    asynStatus status = asynSuccess;
 
     /* Pass octet interrupts */
     value = getParameter(command)->getString();
