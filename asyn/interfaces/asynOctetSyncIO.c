@@ -25,12 +25,11 @@
 
 #include <cantProceed.h>
 
-#define epicsExportSharedSymbols
-#include <shareLib.h>
 #include "asynDriver.h"
 #include "asynOctet.h"
 #include "asynDrvUser.h"
-#include "drvAsynIPPort.h"
+
+#include <epicsExport.h>
 #include "asynOctetSyncIO.h"
 
 typedef struct ioPvt {
@@ -239,6 +238,11 @@ static asynStatus writeRead(asynUser *pasynUser,
 {
     asynStatus status, unlockStatus;
     ioPvt      *pioPvt = (ioPvt *)pasynUser->userPvt;
+    
+    /* Set outputs to 0 in case we get an error */
+    *nbytesOut = 0;
+    *nbytesIn = 0;
+    if (eomReason) *eomReason = 0;
 
     pasynUser->timeout = timeout;
     status = pasynManager->queueLockPort(pasynUser);
