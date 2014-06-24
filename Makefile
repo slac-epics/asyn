@@ -20,8 +20,6 @@ DIRS += testAsynPortDriverApp
 testAsynPortDriverApp_DEPEND_DIRS = asyn
 DIRS += testErrorsApp
 testErrorsApp_DEPEND_DIRS = asyn
-DIRS += testUsbtmcApp
-testUsbtmcApp_DEPEND_DIRS = asyn
 
 ifdef SNCSEQ
 DIRS += testIPServerApp
