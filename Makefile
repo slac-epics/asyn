@@ -34,4 +34,7 @@ ifdef SNCSEQ
 iocBoot_DEPEND_DIRS += testIPServerApp
 endif
 
+# Install HTML documentation via doxygen:
+DIRS += documentation
+
 include $(TOP)/configure/RULES_TOP
