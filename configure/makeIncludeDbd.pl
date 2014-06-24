@@ -9,7 +9,7 @@
 # in file LICENSE that is included with this distribution. 
 #*************************************************************************
 #
-# $Id: makeIncludeDbd.pl,v 1.1.1.5 2013/04/23 14:02:12 ernesto Exp $
+# $Id: makeIncludeDbd.pl,v 1.1 2004-04-14 19:21:38 mrk Exp $
 
 use File::Basename;
 

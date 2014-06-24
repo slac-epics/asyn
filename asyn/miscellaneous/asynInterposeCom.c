@@ -2,7 +2,7 @@
  * RFC 2117 support for remote serial ports
  * 
  * Author: W. Eric Norum
- * "$Date: 2013/04/23 14:02:23 $ (UTC)"
+ * "$Date: 2011/01/12 00:13:59 $ (UTC)"
  */
 
 /************************************************************************\
@@ -23,8 +23,9 @@
 #include "asynDriver.h"
 #include "asynOctet.h"
 #include "asynOption.h"
-#include "asynInterposeCom.h"
+
 #include <epicsExport.h>
+#include "asynInterposeCom.h"
 
 /*
  * TELNET special characters
