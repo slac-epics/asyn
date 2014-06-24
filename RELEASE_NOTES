@@ -30,6 +30,13 @@
 # 
 #==============================================================
 #
+asyn-R4-23_1-0:   Merged in asyn4-23 from ANL; add site specific changes for SLAC
+                  to see RELEASE_NOTES look at the maintainer's website:
+                  http://www.aps.anl.gov/epics/modules/soft/asyn/R4-23/RELEASE_NOTES.
+                  --BUILD with:
+                    ipac-R2-11_1-0
+                    SNCSEQ is required for testIPServer (not needed in production only for testing)
+
 asyn-R4-21_1-0:   Merged in asyn4-21 from ANL; add site specific changes for SLAC
                   to see RELEASE_NOTES look at the maintainer's website:
                   http://www.aps.anl.gov/epics/modules/soft/asyn/R4-21/RELEASE_NOTES.
