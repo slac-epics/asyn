@@ -30,6 +30,8 @@
 # 
 #==============================================================
 #
+asyn-R4-23_1-1:   Update Ipac dependency for uTCA and build for linux targets
+
 asyn-R4-23_1-0:   Merged in asyn4-23 from ANL; add site specific changes for SLAC
                   to see RELEASE_NOTES look at the maintainer's website:
                   http://www.aps.anl.gov/epics/modules/soft/asyn/R4-23/RELEASE_NOTES.
