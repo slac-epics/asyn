@@ -20,7 +20,7 @@ EPICS_MODULES=$(MODULES_SITE_TOP)
 # Define the version of modules needed by
 # IOC apps or other Support apps
 # =============================================================
-IPAC_MODULE_VERSION=ipac-R2-11_1-1
+IPAC_MODULE_VERSION=ipac-R2-11_1-2
 
 # SNCSEQ is required for testIPServer
 #SNCSEQ_MODULE_VERSION=seq-R2-1-3-lcls1
