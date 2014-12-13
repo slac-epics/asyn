@@ -14,9 +14,6 @@
 #  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
 #--------------------------------------------------------------
 #  Mod:
-#         23-Apr-2013, E. Williams        (ernesto):
-#            add asyn-R4-21_1-0
-
 #         19-Mar-2010, S. Hoobler        (SONYA):
 #            add asyn-R4-9-lcls5
 #         22-Feb-2010, K. Luchini        (LUCHINI):
@@ -30,22 +27,6 @@
 # 
 #==============================================================
 #
-asyn-R4-23_1-2:   Build for IPAC_MODULE_VERSION=ipac-R2-11_1-2; stable release
-
-asyn-R4-23_1-1:   Update Ipac dependency for uTCA and build for linux targets
-
-asyn-R4-23_1-0:   Merged in asyn4-23 from ANL; add site specific changes for SLAC
-                  to see RELEASE_NOTES look at the maintainer's website:
-                  http://www.aps.anl.gov/epics/modules/soft/asyn/R4-23/RELEASE_NOTES.
-                  --BUILD with:
-                    ipac-R2-11_1-0
-                    SNCSEQ is required for testIPServer (not needed in production only for testing)
-
-asyn-R4-21_1-0:   Merged in asyn4-21 from ANL; add site specific changes for SLAC
-                  to see RELEASE_NOTES look at the maintainer's website:
-                  http://www.aps.anl.gov/epics/modules/soft/asyn/R4-21/RELEASE_NOTES.
-
-
 asyn-R4-20_1-1:   Build against ipac-R2-11_1-0 (which builds for all targets)
 
 asyn-R4-20_1-0:   Merged in asyn4-20 from ANL; add site specific changes for SLAC
