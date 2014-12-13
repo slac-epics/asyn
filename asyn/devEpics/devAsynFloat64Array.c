@@ -21,6 +21,7 @@
 #include <dbAccess.h>
 #include <callback.h>
 #include <dbDefs.h>
+#include <dbStaticLib.h>
 #include <link.h>
 #include <errlog.h>
 #include <epicsMutex.h>
@@ -37,7 +38,6 @@
 #include "asynDrvUser.h"
 #include "asynFloat64Array.h"
 #include "asynEpicsUtils.h"
-#include <epicsExport.h>
 
 #include "devAsynXXXArray.h"
 
