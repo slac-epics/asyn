@@ -809,15 +809,17 @@ asynStatus asynPortDriver::getParamName(int list, int index, const char **name)
   * \param[in] functionName The name of the function that generated the error  */
 void asynPortDriver::reportSetParamErrors(asynStatus status, int index, int list, const char *functionName)
 {
+	const char *paramName;
+	getParamName(index, &paramName);
     if (status == asynParamBadIndex) {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error setting parameter %d in list %d, bad index\n",
-            driverName, functionName, portName, index, list);
+            "%s:%s: port=%s error setting parameter %d, %s, in list %d, bad index\n",
+            driverName, functionName, portName, index, paramName, list);
     }
     if (status == asynParamWrongType) {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error setting parameter %d in list %d, wrong type\n",
-            driverName, functionName, portName, index, list);
+            "%s:%s: port=%s error setting parameter %d, %s, in list %d, wrong type\n",
+            driverName, functionName, portName, index, paramName, list);
     }
 }
 
