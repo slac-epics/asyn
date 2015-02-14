@@ -1084,14 +1084,18 @@ void asynPortDriver::reportGetParamErrors(asynStatus status, int index, int list
             driverName, functionName, portName, index, list);
     }
     if (status == asynParamWrongType) {
+		const char *paramName;
+		getParamName(index, &paramName);
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-            "%s:%s: port=%s error getting parameter %d in list %d, wrong type\n",
-            driverName, functionName, portName, index, list);
+            "%s:%s: port=%s error getting parameter %d %s, in list %d, wrong type\n",
+            driverName, functionName, portName, index, paramName, list);
     }
     if (status == asynParamUndefined) {
+		const char *paramName;
+		getParamName(index, &paramName);
         asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
-            "%s:%s: port=%s error getting parameter %d in list %d, value undefined\n",
-            driverName, functionName, portName, index, list);
+            "%s:%s: port=%s error getting parameter %d %s, in list %d, value undefined\n",
+            driverName, functionName, portName, index, paramName, list);
     }
 }
 
