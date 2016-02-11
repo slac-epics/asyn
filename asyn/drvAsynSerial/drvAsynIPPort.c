@@ -542,8 +542,6 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     int thisRead;
     int readPollmsec;
     int reason = 0;
-    epicsTimeStamp startTime;
-    epicsTimeStamp endTime;
     asynStatus status = asynSuccess;
 
     assert(tty);
