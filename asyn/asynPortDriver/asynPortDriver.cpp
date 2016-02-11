@@ -17,17 +17,21 @@
 #include <epicsMutex.h>
 #include <epicsThread.h>
 #include <cantProceed.h>
-/* NOTE: This is needed for interruptAccept */
-#include <dbAccess.h>
+/* NOTE: interruptAccept is define in dbAccess.h if using EPICS IOC, else set it to 1 */
+#ifdef EPICS_LIBCOM_ONLY
+    static int interruptAccept=1;
+#else 
+    #include <dbAccess.h>
+#endif
 
+#define epicsExportSharedSymbols
+#include <shareLib.h>
 #include "paramVal.h"
 #include "paramErrors.h"
 #include "asynParamType.h"
 #include "ParamListInvalidIndex.h"
 #include "ParamValWrongType.h"
 #include "ParamValNotDefined.h"
-
-#include <epicsExport.h>
 #include "asynPortDriver.h"
 
 static const char *driverName = "asynPortDriver";
@@ -136,6 +140,7 @@ asynStatus paramList::findParam(const char *name, int *index)
     for (*index=0; *index<this->nVals; (*index)++) {
         if (this->vals[*index]->nameEquals(name)) return asynSuccess;
     }
+    *index=-1;
     return asynParamNotFound;
 }
 
@@ -238,6 +243,7 @@ asynStatus paramList::setString(int index, const char *value)
 asynStatus paramList::getInteger(int index, int *value)
 {
     asynStatus status;
+    *value = 0;
     
     try {
         paramVal *pVal = getParameter(index);
@@ -265,6 +271,7 @@ asynStatus paramList::getInteger(int index, int *value)
 asynStatus paramList::getUInt32(int index, epicsUInt32 *value, epicsUInt32 mask)
 {
     asynStatus status;
+    *value = 0;
     
     try {
         paramVal *pVal = getParameter(index);
@@ -291,6 +298,7 @@ asynStatus paramList::getUInt32(int index, epicsUInt32 *value, epicsUInt32 mask)
 asynStatus paramList::getDouble(int index, double *value)
 {
     asynStatus status;
+    *value = 0.;
     
     try {
         paramVal *pVal = getParameter(index);
@@ -608,7 +616,7 @@ asynStatus paramList::callCallbacks(int addr)
         for (i = 0; i < this->nFlags; i++)
         {
             index = this->flags[i];
-            if (!getParameter(index)->isDefined()) return status;
+            if (!getParameter(index)->isDefined()) continue;
             switch(getParameter(index)->type) {
                 case asynParamInt32:
                     status = int32Callback(index, addr);
@@ -2786,7 +2794,6 @@ asynStatus asynPortDriver::connect(asynUser *pasynUser)
     static const char *functionName = "connect";
     
     status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
-    
     pasynManager->exceptionConnect(pasynUser);
     asynPrint(pasynUser, ASYN_TRACE_FLOW,
               "%s:%s:, pasynUser=%p\n", 

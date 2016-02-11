@@ -12,6 +12,301 @@
   <div style="text-align: center">
     <hr />
     <h2>
+      Release 4-28</h2>
+    <h2>
+      December 12, 2015</h2>
+  </div>
+  <h3>
+    drvAsynIPPort</h3>
+  <p>
+    Fixed problem with UDP broadcast sockets. Previously sending broadcast messages
+    worked correctly, but any responses from clients to those messages were rejected
+    by the IOC system. This is because connect() and send() were being called. This
+    is not correct, in this case connect() should not be called and sendto() should
+    be called rather than send(). Also changed the code to call recvfrom() rather than
+    recv()for UDP sockets. This returns the source address information, which is now
+    printed with the source message length and contents if ASYN_TRACEIO_DRIVER is set.</p>
+  <h3>
+    Test applications</h3>
+  <p>
+    New test application, testOutputReadbackApp. Tests that the initial values of output
+    records are set correctly.</p>
+  <p>
+    New test application directory, testBroadcastApp. It has 2 applications for sending
+    broadcasts and reading responses. One uses asyn, and the other native OS calls.
+    The native OS call version only builds on Linux. This is used for testing the UDP
+    broadcast problem fixed in this release.</p>
+  <div style="text-align: center">
+    <hr />
+    <h2>
+      Release 4-27</h2>
+    <h2>
+      October 7, 2015</h2>
+  </div>
+  <h3>
+    Repository location</h3>
+  <p>
+    The source code repository was moved from <a href="https://svn.aps.anl.gov/epics/asyn">
+      https://svn.aps.anl.gov/epics/asyn</a> to <a href="https://github.com/epics-modules/asyn">
+        https://github.com/epics-modules/asyn</a>. This will make it much easier for
+    others to collaborate in the development of asyn.</p>
+  <h3>
+    drvAsynSerialPort</h3>
+  <ul>
+    <li>Fix to save the previous values of the baud rate and termios structures before
+      attempting to change them. If the change fails then the previous values are restored.
+      Previously if a call to setOption() failed, then subsequent calls to getOption()
+      would return the value that failed. Now subsequent calls to getOption() will return
+      the previous valid option, which is presumably the one that the underlying OS driver
+      is still using. Thanks to Ron Sluiter for the initial fix to this problem.</li>
+  </ul>
+  <h3>
+    drvAsynSerialPortWin32</h3>
+  <ul>
+    <li>Fix to automatically prefix COM port names with "\\.\" unless the port name already
+      begins with "\\.\". This is valid syntax for all COM ports and is required for all
+      ports except COM1-COM9. Note that when passing the port string from the iocsh if
+      the port name is in quotes then backslash characters should not be escaped, e.g.
+      "\\.\COM10". If the port name is not in quotes then the backslash characters must
+      be escaped, e.g. \\\\.\\COM10. Thanks to Freddie Akeroyd for the initial version
+      of this fix.</li>
+  </ul>
+  <h3>
+    drvAsynIPPort</h3>
+  <ul>
+    <li>Added the option to automatically close the port when there is a read timeout.
+      This was done by changing the syntax of the drvAsynIPConfigure command from<br />
+      <code>drvAsynIPPortConfigure("portName","hostInfo",priority,noAutoConnect,noProcessEos)</code>
+      to
+      <br />
+      <code>drvAsynIPPortConfigure("portName","hostInfo",priority,noAutoConnect,userFlags)</code><br />
+      userFlags: bit-wise ORed:
+      <ul>
+        <li>Bit 0 is USERFLAG_NO_PROCESS_EOS. If 0 then asynInterposeEosConfig is called specifying
+          both processEosIn and processEosOut. </li>
+        <li>Bit 1 is USERFLAG_CLOSE_ON_READ_TIMEOUT. If 1 then the (TCP) socket will be closed
+          when read() returns a timeout. </li>
+        <li>Bit 2--31 are reserved, set to zero. </li>
+      </ul>
+      This change is backwards compatible since bit 0 is the same as the previous noProcessEos.
+      Thanks to Torsten Bogershausen for this change. </li>
+  </ul>
+  <h3>
+    devEpics</h3>
+  <ul>
+    <li>Changed error reporting if pasynManager->queueRequest returned an error. Previously
+      error messages were printed on every call, which would cause a large number of messages
+      if the port was disconnected and records were periodically processing. Now an error
+      message is only printed when the status return from pasynManager->queueRequest changes,
+      so there will be single message for each record when a port disconnects and a single
+      message when it reconnects.</li>
+    <li>Changed error handling when any of the following errors are encountered:
+      <ul>
+        <li>pasynManager->queueRequest returns an error</li>
+        <li>The I/O call to the driver (e.g. pasynInt32->read()) returns an error.</li>
+        <li>The interrupt callback function is passed an error code in pasynUser->auxStatus</li>
+      </ul>
+      Previously such errors did correctly set the record alarm status and severity. However,
+      they did not return an error code to the function that called the device support
+      write() or read() function. They also updated the record VAL or RVAL field when
+      there was an error, which they should not. Now these functions return an error code
+      and do not update VAL or RVAL when there is an error. </li>
+  </ul>
+  <h3>
+    asynPortDriver</h3>
+  <ul>
+    <li>Changed the status return from pasynManager->queueRequest from asynError to asynDisconnected
+      if a port with ASYN_CANBLOCK=0 is disconnected.</li>
+  </ul>
+  <h3>
+    asynShellCommands</h3>
+  <ul>
+    <li>Added new command asynSetMinTimerPeriod, and corresponding C function. This command
+      is currently only implemented on the WIN32 architectures, and simply prints an error
+      message on all other architectures. It allows reducing the minimum time for epicsThreadSleep()
+      from the default of 10 ms to the minimum supported Windows system value. On most
+      systems this is 1 ms. Note that epicsThreadSleepQuantum() does not seem to report
+      the correct value whether or not this function is called. On my system it always
+      reports 0.0156 seconds. Note also that this function really has nothing to do with
+      asyn, and the equivalent functionality should probably be moved into EPICS base
+      at some time.</li>
+  </ul>
+  <h3>
+    Deadlock issue</h3>
+  <ul>
+    <li>There is a potential deadlock issue when using input records with SCAN=I/O Intr.
+      This is discussed in the <a href="KnownProblems.html">KnownProblems document</a>.
+      Thanks to Ambroz Bizjak for finding this problem.</li>
+  </ul>
+  <div style="text-align: center">
+    <hr />
+    <h2>
+      Release 4-26</h2>
+    <h2>
+      February 15, 2015</h2>
+  </div>
+  <h3>
+    devEpics</h3>
+  <ul>
+    <li>Added capability for output records to update their values with a callback from
+      the driver. This is enabled by adding the following info tag to the output record:<br />
+      <code>info(asyn:READBACK, "1")</code><br />
+      The output record value will update any time the driver does a callback with a new
+      value. The output record alarm status and severity will also update to reflect the
+      value passed by the driver in pasynUser->auxStatus. The driver callbacks use the
+      same ring buffer mechanism that input records do. The default ring buffer size is
+      10 for all records except stringin, stringout, and waveform records, for which the
+      default is 0.</li>
+    <li>Updated the test application testErrorsApp to demonstrate and test output record
+      updates.</li>
+    <li>Added ring buffer support to devAsynOctet. The default ring buffer size is 0 for
+      all records in devAsynOctet, i.e. stringin, stringout, waveform in and out. Non-zero
+      values can be specified with the asyn:FIFO info tag.</li>
+    <li>Changed the info tag that is used to control the size of the ring buffer for driver
+      callbacks. The tag has been changed from FIFO to asyn:FIFO, i.e. adding the asyn:
+      namespace to prevent future conflicts with any other facility. <em>NOTE:</em>This
+      change is not backwards compatible, any databases using the FIFO info tag will need
+      to be changed to asyn:FIFO. It is not expected that this will affect many users,
+      since the default ring buffer size is used in nearly all cases.</li>
+  </ul>
+  <h3>
+    asynPortDriver</h3>
+  <ul>
+    <li>Bug fix: If setParamStatus() was called for an array or generic pointer parameter
+      then callParamCallbacks() could return prematurely and not do the callbacks for
+      all modified parameters.</li>
+  </ul>
+  <div style="text-align: center">
+    <hr />
+    <h2>
+      Release 4-25</h2>
+    <h2>
+      December 10, 2014</h2>
+  </div>
+  <h3>
+    devAsynOctet</h3>
+  <p>
+    Fixed 2 bugs:</p>
+  <ol>
+    <li>The interrupt callback function for stringin records (e.g. with SCAN=I/O Intr)
+      did not null-terminate the string if the driver returned MAX_STRING_SIZE or more
+      characters. Thanks to Freddie Akeroyd for fixing this.</li>
+    <li>The interrupt callback function for stringin and waveform records were not properly
+      locking the record when modifying the record fields.</li>
+  </ol>
+  <h3>
+    devAsynXXXArray</h3>
+  <p>
+    Added optional support for ring buffers with waveform records. Ring buffers were
+    added to asyn device support for scalar (non-array) records in R4-10. To enable
+    ring buffer support on a waveform record the record info tag FIFO can be set to
+    a value greater than 0. For example this line in a db file for a waveform record
+    sets a ring buffer size of 20 elements.</p>
+  <pre>       info("FIFO", "20") 
+    </pre>
+  <p>
+    Ring buffers are only used when records have SCAN=I/O Intr. They allow the record
+    to process all of the arrays from a rapid burst of callbacks from the driver. However,
+    because Channel Access does not provide any buffering for arrays, even if the record
+    processes for each new array callback, Channel Access will not necessarily send
+    events for each value, because it just sends the current record value when the CA
+    callbacks are done.</p>
+  <p>
+    A new test application, testArrayRingBufferApp was added to test this array ring
+    buffer support. A new iocBoot/ioctestRingBuffer directory was also added.</p>
+  <h3>
+    Interfaces</h3>
+  <p>
+    Added new asynOptionSyncIO interface. This interface is needed so that the asynOption
+    interface can be called synchronously when it is OK to block.</p>
+  <h3>
+    Building asyn with only using libCom from EPICS base</h3>
+  <p>
+    It has always been asserted that except for devEpics asyn only really depends on
+    libCom from EPICS base. People who are interested in using asyn drivers from other
+    control systems, want to minimize the dependencies of libraries from EPICS base.
+    The following lines have been added to asyn/configure/CONFIG_SITE:</p>
+  <pre>-------------------------------------------------------------------------------
+# If you want to build asyn so the only dependency on EPICS base is libCom then set the following flag
+#EPICS_LIBCOM_ONLY=YES
+-------------------------------------------------------------------------------
+</pre>
+  <p>
+    If EPICS_LIBCOM_ONLY is YES then the build is done so that only libCom is needed.
+    This does the following:</p>
+  <ul>
+    <li>Omits building all of the device support for EPICS records</li>
+    <li>Omits building the test applications that create IOC applications</li>
+    <li>Sets asyn_LIBS to Com rather than $(EPICS_BASE_IOCS_LIBS) when creating the library</li>
+    <li>Changes the logic in asynPortDriver which uses interruptAccept. If EPICS_LIBCOM_ONLY
+      is set then dbDefs.h is not included and interruptAccept is defined as a static
+      variable set to 1.</li>
+  </ul>
+  <p>
+    A new C++ class was added, asyn/asynPortClient/asynPortClient.cpp. This class makes
+    it easy to write a C++ application that starts existing asyn port drivers and communicates
+    with them over standard asyn interfaces without running an IOC.</p>
+  <p>
+    A new test application directory was added testAsynPortClient. This tests running
+    C++ applications that communicate with asyn port drivers without running an IOC.
+    This currently contains a single test application, testAsynIPPortClient.cpp. This
+    program creates an asynIPPort driver, and uses the command line arguments to set
+    the hostInfo string, a single command string to send to the server, and optionally
+    the input and output EOS. It then prints out the response from the server. There
+    are 3 example shell scipts that show how to use testAsynIPPortClient to communicate
+    with a Web server, XPS motor controller, and a telnet host respectively.<br />
+  </p>
+  <h3>
+    drvAsynUSBTMC</h3>
+  <p>
+    Bruno Martins found and fixed a problem with data transfers that spanned multiple
+    USB packets.</p>
+  <div style="text-align: center">
+    <h2>
+      Release 4-24</h2>
+    <h2>
+      October 14, 2014</h2>
+  </div>
+  <h3>
+    drvAsynIPPort.c</h3>
+  <p>
+    Added capability to specify the local port that the server should use for the connection.
+    Normally the local host choses a random local port that it binds to and passes to
+    the server. There are a few servers that only accept a specific local port or range
+    of local ports, for which this capability is required. The new syntax is:</p>
+  <p>
+    &lt;host&gt;:&lt;port&gt;[:localPort] [protocol]</p>
+  <p>
+    For example</p>
+  <p>
+    164.54.160.100:5000:10101 UDP</p>
+  <p>
+    where 10101 is the optional local port number.</p>
+  <h3>
+    devEpics</h3>
+  <p>
+    Fixed all initialization routines so that if there is an error they do the following:</p>
+  <ul>
+    <li>Call recGblSetSevr(precord,LINK_ALARM,INVALID_ALARM)</li>
+    <li>Set precord-&gt;pact=1</li>
+    <li>return(INIT_ERROR), where INIT_ERROR=-1</li>
+  </ul>
+  <p>
+    Thanks to Nick Rees for these fixes.</p>
+  <h3>
+    Many source files</h3>
+  <p>
+    Fixed problem with location of #define epicsExportSharedSymbols and/or #include
+    &lt;epicsExport.h&gt;. In previous versions these were placed immediately before
+    the #include statements defining symbols for that <em>source file</em> . However,
+    this was incorrect, they must be placed before all of the #include statements defining
+    symbols <em>for that DLL</em> . This mistake causes the same symbol being defined
+    with both dllExport and dllImport when building the DLL. The Visual Studio compiler
+    does not even warn about this error, but it produces a fatal error with the GCC
+    compiler under Cygwin.</p>
+  <div style="text-align: center">
+    <hr />
+    <h2>
       Release 4-23</h2>
     <h2>
       June 16, 2014</h2>
@@ -19,8 +314,8 @@
   <h3>
     asynManager.c</h3>
   <p>
-    Fixed a bug in pasynManager->memMalloc. It could return a pointer that was not a
-    multiple of 8 bytes. This led to subtle problems on some architectures (e.g. ARM)
+    Fixed a bug in pasynManager-&gt;memMalloc. It could return a pointer that was not
+    a multiple of 8 bytes. This led to subtle problems on some architectures (e.g. ARM)
     if a double was stored in the memory returned by memMalloc. Fixed the code so the
     pointer is always a multiple of 16 bytes (for future safety).</p>
   <h3>

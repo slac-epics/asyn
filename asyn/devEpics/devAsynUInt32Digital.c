@@ -51,7 +51,10 @@
 #include "asynEnum.h"
 #include "asynEnumSyncIO.h"
 #include "asynEpicsUtils.h"
-#include <epicsExport.h>
+
+#define INIT_OK 0
+#define INIT_DO_NOT_CONVERT 2
+#define INIT_ERROR -1
 
 #define DEFAULT_RING_BUFFER_SIZE 10
 /* We should be getting these from db_access.h, but get errors including that file? */
@@ -73,7 +76,7 @@ typedef struct devPvt{
     void              *uint32Pvt;
     void              *registrarPvt;
     int               canBlock;
-    epicsMutexId      mutexId;
+    epicsMutexId      ringBufferLock;
     epicsUInt32        mask;
     ringBufferElement *ringBuffer;
     int               ringHead;
@@ -92,6 +95,7 @@ typedef struct devPvt{
     char              *enumStrings[MAX_ENUM_STATES];
     int               enumValues[MAX_ENUM_STATES];
     int               enumSeverities[MAX_ENUM_STATES];
+    asynStatus        previousQueueRequestStatus;
 }devPvt;
 
 #define NUM_BITS 16
@@ -99,6 +103,7 @@ typedef struct devPvt{
 static void setEnums(char *outStrings, int *outVals, epicsEnum16 *outSeverities, 
                      char *inStrings[], int *inVals, int *inSeverities, 
                      size_t numIn, size_t numOut);
+static long createRingBuffer(dbCommon *pr);
 static long getIoIntInfo(int cmd, dbCommon *pr, IOSCANPVT *iopvt);
 static void processCallbackInput(asynUser *pasynUser);
 static void processCallbackOutput(asynUser *pasynUser);
@@ -177,7 +182,7 @@ static long initCommon(dbCommon *pr, DBLINK *plink,
     pasynUser = pasynManager->createAsynUser(processCallback, 0);
     pasynUser->userPvt = pPvt;
     pPvt->pasynUser = pasynUser;
-    pPvt->mutexId = epicsMutexCreate();
+    pPvt->ringBufferLock = epicsMutexCreate();
     /* Parse the link to get addr and port */
     status = pasynEpicsUtils->parseLinkMask(pasynUser, plink, 
                 &pPvt->portName, &pPvt->addr, &pPvt->mask,&pPvt->userParam);
@@ -264,17 +269,68 @@ static long initCommon(dbCommon *pr, DBLINK *plink,
                    pr->name,pPvt->pasynUser->errorMessage);
         }
     }
-    return 0;
+    /* If the info field "asyn:READBACK" is 1 and interruptCallback is not NULL 
+     * then register for callbacks on output records */
+    if (interruptCallback) {
+        int enableCallbacks=0;
+        const char *callbackString;
+        DBENTRY *pdbentry = dbAllocEntry(pdbbase);
+        status = dbFindRecord(pdbentry, pr->name);
+        if (status) {
+            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
+                "%s devAsynUInt32Digital::initCommon error finding record\n",
+                pr->name);
+            goto bad;
+        }
+        callbackString = dbGetInfo(pdbentry, "asyn:READBACK");
+        if (callbackString) enableCallbacks = atoi(callbackString);
+        if (enableCallbacks) {
+            status = createRingBuffer(pr);
+            if (status!=asynSuccess) goto bad;
+            status = pPvt->puint32->registerInterruptUser(
+               pPvt->uint32Pvt,pPvt->pasynUser,
+               pPvt->interruptCallback,pPvt,pPvt->mask, &pPvt->registrarPvt);
+            if(status!=asynSuccess) {
+                printf("%s devAsynUInt32Digital::initRecord error calling registerInterruptUser %s\n",
+                       pr->name,pPvt->pasynUser->errorMessage);
+            }
+        }
+    }
+    return INIT_OK;
 bad:
-   pr->pact=1;
-   return -1;
+    recGblSetSevr(pr,LINK_ALARM,INVALID_ALARM);
+    pr->pact=1;
+    return INIT_ERROR;
 }
 
-static long getIoIntInfo(int cmd, dbCommon *pr, IOSCANPVT *iopvt)
+static long createRingBuffer(dbCommon *pr)
 {
     devPvt *pPvt = (devPvt *)pr->dpvt;
     asynStatus status;
     const char *sizeString;
+    
+    if (!pPvt->ringBuffer) {
+        DBENTRY *pdbentry = dbAllocEntry(pdbbase);
+        pPvt->ringSize = DEFAULT_RING_BUFFER_SIZE;
+        status = dbFindRecord(pdbentry, pr->name);
+        if (status) {
+            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
+                "%s devAsynUInt32Digital::createRingBufffer error finding record\n",
+                pr->name);
+            return -1;
+        }
+        sizeString = dbGetInfo(pdbentry, "asyn:FIFO");
+        if (sizeString) pPvt->ringSize = atoi(sizeString);
+        pPvt->ringBuffer = callocMustSucceed(pPvt->ringSize+1, sizeof *pPvt->ringBuffer, "devAsynUInt32Digital::createRingBuffer");
+    }
+    return asynSuccess;
+}
+
+
+static long getIoIntInfo(int cmd, dbCommon *pr, IOSCANPVT *iopvt)
+{
+    devPvt *pPvt = (devPvt *)pr->dpvt;
+    asynStatus status;
 
     /* If initCommon failed then pPvt->puint32 is NULL, return error */
     if (!pPvt->puint32) return -1;
@@ -284,18 +340,7 @@ static long getIoIntInfo(int cmd, dbCommon *pr, IOSCANPVT *iopvt)
         asynPrint(pPvt->pasynUser, ASYN_TRACE_FLOW,
             "%s devAsynUInt32Digital::getIoIntInfo registering interrupt\n",
             pr->name);
-        if (!pPvt->ringBuffer) {
-            DBENTRY *pdbentry = dbAllocEntry(pdbbase);
-            pPvt->ringSize = DEFAULT_RING_BUFFER_SIZE;
-            status = dbFindRecord(pdbentry, pr->name);
-            if (status)
-                asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                    "%s devAsynUInt32Digital::getIoIntInfo error finding record\n",
-                    pr->name);
-            sizeString = dbGetInfo(pdbentry, "FIFO");
-            if (sizeString) pPvt->ringSize = atoi(sizeString);
-            pPvt->ringBuffer = callocMustSucceed(pPvt->ringSize+1, sizeof *pPvt->ringBuffer, "devAsynUInt32Digital::getIoIntInfo");
-        }
+        createRingBuffer(pr);
         status = pPvt->puint32->registerInterruptUser(
             pPvt->uint32Pvt,pPvt->pasynUser,
             pPvt->interruptCallback,pPvt,pPvt->mask,&pPvt->registrarPvt);
@@ -396,7 +441,7 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,
      * Instead we just return.  There will then be nothing in the ring buffer, so the first
      * read will do a read from the driver, which should be OK. */
     if (!interruptAccept) return;
-    epicsMutexLock(pPvt->mutexId);
+    epicsMutexLock(pPvt->ringBufferLock);
     rp = &pPvt->ringBuffer[pPvt->ringHead];
     rp->value = value;
     rp->time = pasynUser->timestamp;
@@ -414,8 +459,7 @@ static void interruptCallbackInput(void *drvPvt, asynUser *pasynUser,
          * new element to the ring buffer, not if we just replaced an element. */
         scanIoRequest(pPvt->ioScanPvt);
     }    
-    /* The driver flags problems by setting pasynUser->auxStatus */
-    epicsMutexUnlock(pPvt->mutexId);
+    epicsMutexUnlock(pPvt->ringBufferLock);
 }
 
 static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,
@@ -424,25 +468,24 @@ static void interruptCallbackOutput(void *drvPvt, asynUser *pasynUser,
     devPvt *pPvt = (devPvt *)drvPvt;
     dbCommon *pr = pPvt->pr;
     ringBufferElement *rp;
-    int nextHead;
 
     asynPrint(pPvt->pasynUser, ASYN_TRACEIO_DEVICE,
         "%s devAsynUInt32Digital::interruptCallbackOutput new value=%u\n",
         pr->name, value);
-    epicsMutexLock(pPvt->mutexId);
-    nextHead = (pPvt->ringHead==pPvt->ringSize) ? 0 : pPvt->ringHead+1;
-    if (nextHead == pPvt->ringTail) {
+    if (!interruptAccept) return;
+    epicsMutexLock(pPvt->ringBufferLock);
+    rp = &pPvt->ringBuffer[pPvt->ringHead];
+    rp->value = value;
+    rp->time = pasynUser->timestamp;
+    rp->status = pasynUser->auxStatus;
+    pPvt->ringHead = (pPvt->ringHead==pPvt->ringSize) ? 0 : pPvt->ringHead+1;
+    if (pPvt->ringHead == pPvt->ringTail) {
+        pPvt->ringTail = (pPvt->ringTail==pPvt->ringSize) ? 0 : pPvt->ringTail+1;
         pPvt->ringBufferOverflows++;
-    }
-    else {
-        rp = &pPvt->ringBuffer[pPvt->ringHead];
-        rp->value = value;
-        rp->time = pasynUser->timestamp;
-        rp->status = pasynUser->auxStatus;
-        pPvt->ringHead = nextHead;
-    }
-    epicsMutexUnlock(pPvt->mutexId);
-    scanOnce(pr);
+    } else {
+        scanOnce(pr);
+    }    
+    epicsMutexUnlock(pPvt->ringBufferLock);
 }
 
 static void interruptCallbackEnumMbbi(void *drvPvt, asynUser *pasynUser,
@@ -505,7 +548,7 @@ static int getCallbackValue(devPvt *pPvt)
 {
     int ret = 0;
 
-    epicsMutexLock(pPvt->mutexId);
+    epicsMutexLock(pPvt->ringBufferLock);
     if (pPvt->ringTail != pPvt->ringHead) {
         if (pPvt->ringBufferOverflows > 0) {
             asynPrint(pPvt->pasynUser, ASYN_TRACE_WARNING,
@@ -520,7 +563,7 @@ static int getCallbackValue(devPvt *pPvt)
                                             pPvt->pr->name,pPvt->result.value);
         ret = 1;
     }
-    epicsMutexUnlock(pPvt->mutexId);
+    epicsMutexUnlock(pPvt->ringBufferLock);
     return ret;
 }
 
@@ -534,19 +577,37 @@ static int computeShift(epicsUInt32 mask)
     }
     return i;
 }
+
+static void reportQueueRequestStatus(devPvt *pPvt, asynStatus status)
+{
+    if (status != asynSuccess) pPvt->result.status = status;
+    if (pPvt->previousQueueRequestStatus != status) {
+        pPvt->previousQueueRequestStatus = status;
+        if (status == asynSuccess) {
+            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
+                "%s devAsynUInt32Digital queueRequest status returned to normal\n", 
+                pPvt->pr->name);
+        } else {
+            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
+                "%s devAsynUInt32Digital queueRequest %s\n", 
+                pPvt->pr->name,pPvt->pasynUser->errorMessage);
+        }
+    }
+}
+
 
 static long initBi(biRecord *pr)
 {
     devPvt *pPvt;
-    asynStatus status;
+    int status;
 
     status = initCommon((dbCommon *)pr,&pr->inp,
         processCallbackInput,interruptCallbackInput, interruptCallbackEnumBi,
         2, (char*)&pr->znam, NULL, &pr->zsv);
-    if (status != asynSuccess) return 0;
+    if (status != INIT_OK) return status;
     pPvt = pr->dpvt;
     pr->mask = pPvt->mask;
-    return 0;
+    return INIT_OK;
 }
 static long processBi(biRecord *pr)
 {
@@ -558,37 +619,33 @@ static long processBi(biRecord *pr)
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
         if(pPvt->canBlock) pr->pact = 0;
-        if(status != asynSuccess) {
-            pPvt->result.status = status;
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynUInt32Digital::process error queuing request %s\n", 
-                pr->name,pPvt->pasynUser->errorMessage);
-        }
+        reportQueueRequestStatus(pPvt, status);
     }
-    pr->rval = pPvt->result.value & pr->mask; 
     pr->time = pPvt->result.time;
     if(pPvt->result.status==asynSuccess) {
+        pr->rval = pPvt->result.value & pr->mask; 
         pr->udf=0;
+        return 0;
     }
     else {
         pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->result.status, READ_ALARM, &pPvt->alarmStat,
                                                 INVALID_ALARM, &pPvt->alarmSevr);
         recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr);
+        pPvt->result.status = asynSuccess;
+        return -1;
     }
-    pPvt->result.status = asynSuccess;
-    return 0;
 }
 
 static long initBo(boRecord *pr)
 {
     devPvt *pPvt;
-    asynStatus status;
+    int status;
     epicsUInt32 value;
 
     status = initCommon((dbCommon *)pr,&pr->out,
         processCallbackOutput,interruptCallbackOutput, interruptCallbackEnumBo,
         2, (char*)&pr->znam, NULL, &pr->zsv);
-    if (status != asynSuccess) return 0;
+    if (status != INIT_OK) return status;
     pPvt = pr->dpvt;
     pr->mask = pPvt->mask;
     /* Read the current value from the device */
@@ -597,9 +654,9 @@ static long initBo(boRecord *pr)
     pasynUInt32DigitalSyncIO->disconnect(pPvt->pasynUserSync);
     if (status == asynSuccess) {
         pr->rval = value;
-        return 0;
+        return INIT_OK;
     }
-    return 2; /* Do not convert */
+    return INIT_DO_NOT_CONVERT; /* Do not convert */
 }
 
 static long processBo(boRecord *pr)
@@ -608,40 +665,41 @@ static long processBo(boRecord *pr)
     asynStatus status;
 
     if(getCallbackValue(pPvt)) {
-        /* This code is for I/O Intr scanned output records, which are not tested yet. */
-        pr->rval = pPvt->result.value & pr->mask;
-        pr->val = (pr->rval) ? 1 : 0;
-        pr->udf = 0;
+        /* We got a callback from the driver */
+        if (pPvt->result.status == asynSuccess) {
+            pr->rval = pPvt->result.value & pr->mask;
+            pr->val = (pr->rval) ? 1 : 0;
+            pr->udf = 0;
+        }
     } else if(pr->pact == 0) {
         pPvt->result.value = pr->rval;;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
         if(pPvt->canBlock) pr->pact = 0;
-        if(status != asynSuccess) {
-            pPvt->result.status = status;
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynUInt32Digital:process error queuing request %s\n",
-                pr->name,pPvt->pasynUser->errorMessage);
-        }
+        reportQueueRequestStatus(pPvt, status);
     }
-    if(pPvt->result.status != asynSuccess) {
+    if(pPvt->result.status == asynSuccess) {
+        return 0;
+    }
+    else {
         pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->result.status, WRITE_ALARM, &pPvt->alarmStat,
                                                 INVALID_ALARM, &pPvt->alarmSevr);
         recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr);
+        pPvt->result.status = asynSuccess;
+        return -1;
     }
-    return 0;
 }
 
 static long initLi(longinRecord *pr)
 {
-    asynStatus status;
+    int status;
 
     status = initCommon((dbCommon *)pr,&pr->inp,
         processCallbackInput,interruptCallbackInput, NULL,
         0, NULL, NULL, NULL);
-    if (status != asynSuccess) return 0;
-    return 0;
+    if (status != INIT_OK) return status;
+    return INIT_OK;
 }
 
 static long processLi(longinRecord *pr)
@@ -654,37 +712,33 @@ static long processLi(longinRecord *pr)
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
         if(pPvt->canBlock) pr->pact = 0;
-        if(status != asynSuccess) {
-            pPvt->result.status = status;
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynUInt32Digital queueRequest %s\n", 
-                pr->name,pPvt->pasynUser->errorMessage);
-        }
+        reportQueueRequestStatus(pPvt, status);
     }
-    pr->val = pPvt->result.value & pPvt->mask;
     pr->time = pPvt->result.time; 
     if(pPvt->result.status==asynSuccess) {
+        pr->val = pPvt->result.value & pPvt->mask;
         pr->udf=0;
+        return 0;
     }
     else {
         pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->result.status, READ_ALARM, &pPvt->alarmStat,
                                                 INVALID_ALARM, &pPvt->alarmSevr);
         recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr);
+        pPvt->result.status = asynSuccess;
+        return -1;
     }
-    pPvt->result.status = asynSuccess;
-    return 0;
 }
 
 static long initLo(longoutRecord *pr)
 {
     devPvt *pPvt;
-    asynStatus status;
+    int status;
     epicsUInt32 value;
 
     status = initCommon((dbCommon *)pr,&pr->out,
        processCallbackOutput,interruptCallbackOutput, NULL,
        0, NULL, NULL, NULL);
-    if (status != asynSuccess) return 0;
+    if (status != INIT_OK) return status;
     pPvt = pr->dpvt;
     /* Read the current value from the device */
     status = pasynUInt32DigitalSyncIO->read(pPvt->pasynUserSync,
@@ -693,7 +747,7 @@ static long initLo(longoutRecord *pr)
         pr->val = value;
         pr->udf = 0;
     }
-    return 0;
+    return INIT_OK;
 }
 
 static long processLo(longoutRecord *pr)
@@ -702,42 +756,43 @@ static long processLo(longoutRecord *pr)
     asynStatus status;
 
     if(getCallbackValue(pPvt)) {
-        /* This code is for I/O Intr scanned output records, which are not tested yet. */
-        pr->val = pPvt->result.value & pPvt->mask;
+        /* We got a callback from the driver */
+        if (pPvt->result.status == asynSuccess) {
+            pr->val = pPvt->result.value & pPvt->mask;
+            pr->udf = 0;
+        }
     } else if(pr->pact == 0) {
         pPvt->result.value = pr->val & pPvt->mask;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
         if(pPvt->canBlock) pr->pact = 0;
-        if(status != asynSuccess) {
-            pPvt->result.status = status;
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynUInt32Digital::process error queuing request %s\n",
-                pr->name,pPvt->pasynUser->errorMessage);
-        }
+        reportQueueRequestStatus(pPvt, status);
     }
-    if(pPvt->result.status != asynSuccess) {
+    if(pPvt->result.status == asynSuccess) {
+        return 0;
+    }
+    else {
         pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->result.status, WRITE_ALARM, &pPvt->alarmStat,
                                                 INVALID_ALARM, &pPvt->alarmSevr);
         recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr);
+        return -1;
     }
-    return 0;
 }
 
 static long initMbbi(mbbiRecord *pr)
 {
     devPvt *pPvt;
-    asynStatus status;
+    int status;
 
     status = initCommon((dbCommon *)pr,&pr->inp,
         processCallbackInput,interruptCallbackInput, interruptCallbackEnumMbbi,
         MAX_ENUM_STATES, (char*)&pr->zrst, (int*)&pr->zrvl, &pr->zrsv);
-    if (status != asynSuccess) return 0;
+    if (status != INIT_OK) return status;
     pPvt = pr->dpvt;
     pr->mask = pPvt->mask;
     pr->shft = computeShift(pPvt->mask);
-    return 0;
+    return INIT_OK;
 }
 
 static long processMbbi(mbbiRecord *pr)
@@ -750,37 +805,33 @@ static long processMbbi(mbbiRecord *pr)
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
         if(pPvt->canBlock) pr->pact = 0;
-        if(status != asynSuccess) {
-            pPvt->result.status = status;
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynUInt32Digital queueRequest %s\n", 
-                pr->name,pPvt->pasynUser->errorMessage);
-        } 
+        reportQueueRequestStatus(pPvt, status);
     }
-    pr->rval = pPvt->result.value & pr->mask; 
     pr->time = pPvt->result.time;
     if(pPvt->result.status==asynSuccess) {
+        pr->rval = pPvt->result.value & pr->mask; 
         pr->udf=0;
+        return 0;
     }
     else {
         pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->result.status, READ_ALARM, &pPvt->alarmStat,
                                                 INVALID_ALARM, &pPvt->alarmSevr);
         recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr);
+        pPvt->result.status = asynSuccess;
+        return -1;
     }
-    pPvt->result.status = asynSuccess;
-    return 0;
 }
 
 static long initMbbo(mbboRecord *pr)
 {
     devPvt *pPvt;
-    asynStatus status;
+    int status;
     epicsUInt32 value;
 
     status = initCommon((dbCommon *)pr,&pr->out,
         processCallbackOutput,interruptCallbackOutput, interruptCallbackEnumMbbo,
         MAX_ENUM_STATES, (char*)&pr->zrst, (int*)&pr->zrvl, &pr->zrsv);
-    if (status != asynSuccess) return 0;
+    if (status != INIT_OK) return status;
     pPvt = pr->dpvt;
     pr->mask = pPvt->mask;
     pr->shft = computeShift(pPvt->mask);
@@ -789,73 +840,72 @@ static long initMbbo(mbboRecord *pr)
                       &value, pPvt->mask, pPvt->pasynUser->timeout);
     if (status == asynSuccess) {
         pr->rval = value & pr->mask;
-        return 0;
+        return INIT_OK;
     }
-    return 2;
+    return INIT_DO_NOT_CONVERT;
 }
 static long processMbbo(mbboRecord *pr)
 {
     devPvt *pPvt = (devPvt *)pr->dpvt;
     asynStatus status;
 
-    if(getCallbackValue(pPvt)) {
-        /* This code is for I/O Intr scanned output records, which are not tested yet. */
-        unsigned long rval = pPvt->result.value & pr->mask;
-
-        pr->rval = rval;
-        if(pr->shft>0) rval >>= pr->shft;
-        if(pr->sdef){
-            epicsUInt32 *pstate_values;
-            int           i;
-
-            pstate_values = &(pr->zrvl);
-            pr->val = 65535;        /* initalize to unknown state*/
-            for (i = 0; i < 16; i++){
+    if (getCallbackValue(pPvt)) {
+        /* We got a callback from the driver */
+        if (pPvt->result.status == asynSuccess) {
+            unsigned long rval = pPvt->result.value & pr->mask;
+            pr->rval = rval;
+            if(pr->shft>0) rval >>= pr->shft;
+            if(pr->sdef){
+                epicsUInt32 *pstate_values;
+                int i;
+                pstate_values = &(pr->zrvl);
+                pr->val = 65535;        /* initalize to unknown state*/
+                for (i=0; i<16; i++){
                     if (*pstate_values == rval){
-                            pr->val = i;
-                            break;
+                        pr->val = i;
+                        break;
                     }
                     pstate_values++;
+                }
+            } else {
+                /* the raw  is the desired val */
+                pr->val =  (unsigned short)rval;
             }
-        }else{
-            /* the raw  is the desired val */
-            pr->val =  (unsigned short)rval;
+            pr->udf = FALSE;
         }
-        pr->udf = FALSE;
     } else if(pr->pact == 0) {
         pPvt->result.value = pr->rval;
         if(pPvt->canBlock) pr->pact = 1;
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
         if(pPvt->canBlock) pr->pact = 0;
-        if(status != asynSuccess) {
-            pPvt->result.status = status;
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynUInt32Digital::process error queuing request %s\n",
-                pr->name,pPvt->pasynUser->errorMessage);
-        }
+        reportQueueRequestStatus(pPvt, status);
     }
-    if(pPvt->result.status != asynSuccess) {
+    if(pPvt->result.status == asynSuccess) {
+        return 0;
+    }
+    else {
         pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->result.status, WRITE_ALARM, &pPvt->alarmStat,
                                                 INVALID_ALARM, &pPvt->alarmSevr);
         recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr);
+        pPvt->result.status = asynSuccess;
+        return -1;
     }
-    return 0;
 }
 
 static long initMbbiDirect(mbbiDirectRecord *pr)
 {
     devPvt *pPvt;
-    asynStatus status;
+    int status;
 
     status = initCommon((dbCommon *)pr,&pr->inp,
         processCallbackInput,interruptCallbackInput, NULL,
         0, NULL, NULL, NULL);
-    if (status != asynSuccess) return 0;
+    if (status != INIT_OK) return status;
     pPvt = pr->dpvt;
     pr->mask = pPvt->mask;
     pr->shft = computeShift(pPvt->mask);
-    return 0;
+    return INIT_OK;
 }
 
 static long processMbbiDirect(mbbiDirectRecord *pr)
@@ -868,37 +918,33 @@ static long processMbbiDirect(mbbiDirectRecord *pr)
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
         if(pPvt->canBlock) pr->pact = 0;
-        if(status != asynSuccess) {
-            pPvt->result.status = status;
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynUInt32Digital queueRequest %s\n", 
-                pr->name,pPvt->pasynUser->errorMessage);
-        } 
+        reportQueueRequestStatus(pPvt, status);
     }
-    pr->rval = pPvt->result.value & pr->mask; 
     pr->time = pPvt->result.time;
     if(pPvt->result.status==asynSuccess) {
+        pr->rval = pPvt->result.value & pr->mask; 
         pr->udf=0;
+        return 0;
     }
     else {
         pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->result.status, READ_ALARM, &pPvt->alarmStat,
                                                 INVALID_ALARM, &pPvt->alarmSevr);
         recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr);
+        pPvt->result.status = asynSuccess;
+        return -1;
     }
-    pPvt->result.status = asynSuccess;
-    return 0;
 }
 
 static long initMbboDirect(mbboDirectRecord *pr)
 {
     devPvt *pPvt;
-    asynStatus status;
+    int status;
     epicsUInt32 value;
 
     status = initCommon((dbCommon *)pr,&pr->out,
         processCallbackOutput,interruptCallbackOutput, NULL,
         0, NULL, NULL, NULL);
-    if (status != asynSuccess) return 0;
+    if (status != INIT_OK) return status;
     pPvt = pr->dpvt;
     pr->mask = pPvt->mask;
     pr->shft = computeShift(pPvt->mask);
@@ -919,26 +965,28 @@ static long initMbboDirect(mbboDirectRecord *pr)
             value >>= 1;
         }
     }
-    return 2;
+    return INIT_DO_NOT_CONVERT;
 }
 static long processMbboDirect(mbboDirectRecord *pr)
 {
     devPvt *pPvt = (devPvt *)pr->dpvt;
     asynStatus status;
 
-    if(getCallbackValue(pPvt)) {
-        /* This code is for I/O Intr scanned output records, which are not tested yet. */
-        epicsUInt32 rval = pPvt->result.value & pr->mask;
-        unsigned char *bit = &(pr->b0);
-        int i, offset=1;
+    if (getCallbackValue(pPvt)) {
+        /* We got a callback from the driver */
+        if (pPvt->result.status == asynSuccess) {
+            epicsUInt32 rval = pPvt->result.value & pr->mask;
+            unsigned char *bit = &(pr->b0);
+            int i, offset=1;
 
-        pr->rval = rval;
-        if(pr->shft>0) rval >>= pr->shft;
-        for (i=0; i<NUM_BITS; i++, offset <<= 1, bit++ ) {
-            if(*bit) {
-                pr->val |= offset;
-            } else {
-                pr->val &= ~offset;
+            pr->rval = rval;
+            if(pr->shft>0) rval >>= pr->shft;
+            for (i=0; i<NUM_BITS; i++, offset <<= 1, bit++ ) {
+                if(*bit) {
+                    pr->val |= offset;
+                } else {
+                    pr->val &= ~offset;
+                }
             }
         }
     } else if(pr->pact == 0) {
@@ -947,17 +995,16 @@ static long processMbboDirect(mbboDirectRecord *pr)
         status = pasynManager->queueRequest(pPvt->pasynUser, 0, 0);
         if((status==asynSuccess) && pPvt->canBlock) return 0;
         if(pPvt->canBlock) pr->pact = 0;
-        if(status != asynSuccess) {
-            pPvt->result.status = status;
-            asynPrint(pPvt->pasynUser, ASYN_TRACE_ERROR,
-                "%s devAsynUInt32Digital::process error queuing request %s\n",
-                pr->name,pPvt->pasynUser->errorMessage);
-        }
+        reportQueueRequestStatus(pPvt, status);
     }
-    if(pPvt->result.status != asynSuccess) {
+    if(pPvt->result.status == asynSuccess) {
+        return 0;
+    }
+    else {
         pasynEpicsUtils->asynStatusToEpicsAlarm(pPvt->result.status, WRITE_ALARM, &pPvt->alarmStat,
                                                 INVALID_ALARM, &pPvt->alarmSevr);
         recGblSetSevr(pr, pPvt->alarmStat, pPvt->alarmSevr);
+        pPvt->result.status = asynSuccess;
+        return -1;
     }
-    return 0;
 }

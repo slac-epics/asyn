@@ -102,6 +102,7 @@ typedef struct {
     char              *portName;
     int                socketType;
     int                flags;
+    int                userFlags;
     SOCKET             fd;
     unsigned long      nRead;
     unsigned long      nWritten;
@@ -112,6 +113,8 @@ typedef struct {
 #endif
     }                  farAddr;
     size_t             farAddrSize;
+    osiSockAddr        localAddr;
+    size_t             localAddrSize;
     asynInterface      common;
     asynInterface      octet;
 } ttyController_t;
@@ -121,6 +124,11 @@ typedef struct {
 #define FLAG_SHUTDOWN                   0x4
 #define FLAG_NEED_LOOKUP                0x100
 #define FLAG_DONE_LOOKUP                0x200
+
+#define USERFLAG_NO_PROCESS_EOS         0x1
+#define USERFLAG_CLOSE_ON_READ_TIMEOUT  0x2
+#define USERFLAG_RESERVED               (~0x3)
+
 
 #ifdef FAKE_POLL
 /*
@@ -322,20 +330,35 @@ connectIt(void *drvPvt, asynUser *pasynUser)
             tty->flags &= ~FLAG_NEED_LOOKUP;
             tty->flags |=  FLAG_DONE_LOOKUP;
         }
+        
+        /*
+         * Bind to the local IP address if it was specified.
+         * This is a very unusual configuration
+         */
+        if (tty->localAddrSize > 0) {
+            if (bind(fd, &tty->localAddr.sa, tty->localAddrSize)) {
+                epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                                            "unable to bind to local port: %s", strerror(SOCKERRNO));
+                epicsSocketDestroy(fd);
+                return asynError;
+            }
+        }
 
         /*
          * Connect to the remote host
          * If the connect fails, arrange for another DNS lookup in case the
          * problem is just that the device has DHCP'd itself an new number.
          */
-        if (connect(fd, &tty->farAddr.oa.sa, (int)tty->farAddrSize) < 0) {
-            epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
-                          "Can't connect to %s: %s",
-                          tty->IPDeviceName, strerror(SOCKERRNO));
-            epicsSocketDestroy(fd);
-            if (tty->flags & FLAG_DONE_LOOKUP)
-                tty->flags |=  FLAG_NEED_LOOKUP;
-            return asynError;
+        if (tty->socketType != SOCK_DGRAM) {
+            if (connect(fd, &tty->farAddr.oa.sa, (int)tty->farAddrSize) < 0) {
+                epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
+                              "Can't connect to %s: %s",
+                              tty->IPDeviceName, strerror(SOCKERRNO));
+                epicsSocketDestroy(fd);
+                if (tty->flags & FLAG_DONE_LOOKUP)
+                    tty->flags |=  FLAG_NEED_LOOKUP;
+                return asynError;
+            }
         }
     }
     i = 1;
@@ -458,7 +481,11 @@ static asynStatus writeIt(void *drvPvt, asynUser *pasynUser,
         }
 #endif
         for (;;) {
-            thisWrite = send(tty->fd, (char *)data, (int)numchars, 0);
+            if (tty->socketType == SOCK_DGRAM) {
+                thisWrite = sendto(tty->fd, (char *)data, (int)numchars, 0, &tty->farAddr.oa.sa, (int)tty->farAddrSize);
+            } else {
+                thisWrite = send(tty->fd, (char *)data, (int)numchars, 0);
+            }
             if (thisWrite >= 0) break;
             if (SOCKERRNO == SOCK_EWOULDBLOCK || SOCKERRNO == SOCK_EINTR) {
                 if (!haveStartTime) {
@@ -574,14 +601,33 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
         }
     }
 #endif
-    thisRead = recv(tty->fd, data, (int)maxchars, 0);
-    if (thisRead > 0) {
-        asynPrintIO(pasynUser, ASYN_TRACEIO_DRIVER, data, thisRead,
-                   "%s read %d\n", tty->IPDeviceName, thisRead);
-        tty->nRead += (unsigned long)thisRead;
+    if (tty->socketType == SOCK_DGRAM) {
+        /* We use recvfrom() for SOCK_DRAM so we can print the source address with ASYN_TRACEIO_DRIVER */
+        osiSockAddr oa;
+        unsigned int addrlen = sizeof(oa.ia);
+        thisRead = recvfrom(tty->fd, data, (int)maxchars, 0, &oa.sa, &addrlen);
+        if (thisRead > 0) {
+            if (pasynTrace->getTraceMask(pasynUser) & ASYN_TRACEIO_DRIVER) {
+                char inetBuff[32];
+                ipAddrToDottedIP(&oa.ia, inetBuff, sizeof(inetBuff));
+                asynPrintIO(pasynUser, ASYN_TRACEIO_DRIVER, data, thisRead,
+                          "%s (from %s) read %d\n", 
+                          tty->IPDeviceName, inetBuff, thisRead);
+            }
+            tty->nRead += (unsigned long)thisRead;
+        }
+    } else {
+        thisRead = recv(tty->fd, data, (int)maxchars, 0);
+        if (thisRead > 0) {
+            asynPrintIO(pasynUser, ASYN_TRACEIO_DRIVER, data, thisRead,
+                        "%s read %d\n", tty->IPDeviceName, thisRead);
+            tty->nRead += (unsigned long)thisRead;
+        }
     }
     if (thisRead < 0) {
-        if ((SOCKERRNO != SOCK_EWOULDBLOCK) && (SOCKERRNO != SOCK_EINTR)) {
+        int should_close = (tty->userFlags & USERFLAG_CLOSE_ON_READ_TIMEOUT) ||
+                           ((SOCKERRNO != SOCK_EWOULDBLOCK) && (SOCKERRNO != SOCK_EINTR));
+        if (should_close) {
             epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                           "%s read error: %s",
                           tty->IPDeviceName, strerror(SOCKERRNO));
@@ -673,7 +719,7 @@ drvAsynIPPortConfigure(const char *portName,
                        const char *hostInfo,
                        unsigned int priority,
                        int noAutoConnect,
-                       int noProcessEos)
+                       int userFlags)
 {
     ttyController_t *tty;
     asynInterface *pasynInterface;
@@ -695,7 +741,10 @@ drvAsynIPPortConfigure(const char *portName,
         printf("TCP host information missing.\n");
         return -1;
     }
-
+    if (USERFLAG_RESERVED & userFlags) {
+        printf("Reserved userFlags must be 0\n");
+        return -1;
+    }
     /*
      * Perform some one-time-only initializations
      */
@@ -716,6 +765,7 @@ drvAsynIPPortConfigure(const char *portName,
     pasynOctet = (asynOctet *)(tty+1);
     tty->fd = INVALID_SOCKET;
     tty->flags = 0;
+    tty->userFlags = userFlags;
     tty->IPDeviceName = epicsStrDup(hostInfo);
     tty->portName = epicsStrDup(portName);
 
@@ -744,18 +794,39 @@ drvAsynIPPortConfigure(const char *portName,
     }
     else {
         int port;
+        int localPort = -1;
         char protocol[6];
+        char *secondColon, *blank;
         protocol[0] = '\0';
-        if (((cp = strchr(tty->IPDeviceName, ':')) == NULL)
-         || (sscanf(cp, ":%d %5s", &port, protocol) < 1)) {
-            printf("drvAsynIPPortConfigure: \"%s\" is not of the form \"<host>:<port> [protocol]\"\n",
-                                                            tty->IPDeviceName);
+        if ((cp = strchr(tty->IPDeviceName, ':')) == NULL) {
+            printf("drvAsynIPPortConfigure: \"%s\" is not of the form \"<host>:<port>[:localPort] [protocol]\"\n",
+                                                                tty->IPDeviceName);
             ttyCleanup(tty);
             return -1;
         }
         *cp = '\0';
         tty->IPHostName = epicsStrDup(tty->IPDeviceName);
         *cp = ':';
+        if (sscanf(cp, ":%d", &port) < 1) {
+            printf("drvAsynIPPortConfigure: \"%s\" is not of the form \"<host>:<port>[:localPort] [protocol]\"\n",
+                                                                tty->IPDeviceName);
+            ttyCleanup(tty);
+            return -1;
+        }
+        if ((secondColon = strchr(cp+1, ':')) != NULL) {
+            if (sscanf(secondColon, ":%d", &localPort) < 1) {
+                printf("drvAsynIPPortConfigure: \"%s\" is not of the form \"<host>:<port>[:localPort] [protocol]\"\n",
+                                                                tty->IPDeviceName);
+                ttyCleanup(tty);
+                return -1;
+            }
+            tty->localAddr.ia.sin_family = AF_INET;
+            tty->localAddr.ia.sin_port = htons(localPort);
+            tty->localAddrSize = sizeof(tty->localAddr.ia);
+        }
+        if ((blank = strchr(cp, ' ')) != NULL) {
+            sscanf(blank+1, "%5s", protocol);
+        }
         tty->farAddr.oa.ia.sin_family = AF_INET;
         tty->farAddr.oa.ia.sin_port = htons(port);
         tty->farAddrSize = sizeof(tty->farAddr.oa.ia);
@@ -825,7 +896,7 @@ drvAsynIPPortConfigure(const char *portName,
         ttyCleanup(tty);
         return -1;
     }
-    if (!noProcessEos)
+    if (!(tty->userFlags & USERFLAG_NO_PROCESS_EOS))
         asynInterposeEosConfig(tty->portName, -1, 1, 1);
     tty->pasynUser = pasynManager->createAsynUser(0,0);
     status = pasynManager->connectDevice(tty->pasynUser,tty->portName,-1);
@@ -849,7 +920,7 @@ static const iocshArg drvAsynIPPortConfigureArg0 = { "port name",iocshArgString}
 static const iocshArg drvAsynIPPortConfigureArg1 = { "host:port [protocol]",iocshArgString};
 static const iocshArg drvAsynIPPortConfigureArg2 = { "priority",iocshArgInt};
 static const iocshArg drvAsynIPPortConfigureArg3 = { "disable auto-connect",iocshArgInt};
-static const iocshArg drvAsynIPPortConfigureArg4 = { "noProcessEos",iocshArgInt};
+static const iocshArg drvAsynIPPortConfigureArg4 = { "userFlags",iocshArgInt};
 static const iocshArg *drvAsynIPPortConfigureArgs[] = {
     &drvAsynIPPortConfigureArg0, &drvAsynIPPortConfigureArg1,
     &drvAsynIPPortConfigureArg2, &drvAsynIPPortConfigureArg3,
