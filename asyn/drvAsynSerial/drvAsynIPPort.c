@@ -668,6 +668,8 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     int thisRead;
     int readPollmsec;
     int reason = 0;
+    epicsTimeStamp startTime;
+    epicsTimeStamp endTime;
     asynStatus status = asynSuccess;
 
     assert(tty);
@@ -708,8 +710,6 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     if (gotEom) *gotEom = 0;
 #ifdef USE_POLL
     {
-		epicsTimeStamp startTime;
-		epicsTimeStamp endTime;
         struct pollfd pollfd;
         pollfd.fd = tty->fd;
         pollfd.events = POLLIN;
@@ -791,6 +791,7 @@ static asynStatus
 flushIt(void *drvPvt,asynUser *pasynUser)
 {
     ttyController_t *tty = (ttyController_t *)drvPvt;
+    int numRecv, numTotal=0;
     char cbuf[512];
 
     assert(tty);
@@ -802,11 +803,17 @@ flushIt(void *drvPvt,asynUser *pasynUser)
 #ifndef USE_POLL
         setNonBlock(tty->fd, 1);
 #endif
-        while (recv(tty->fd, cbuf, sizeof cbuf, 0) > 0)
-            continue;
+        while (1) {
+            numRecv = recv(tty->fd, cbuf, sizeof cbuf, 0);
+            if (numRecv <= 0) break;
+            numTotal += numRecv;
+        }
 #ifndef USE_POLL
         setNonBlock(tty->fd, 0);
 #endif
+    }
+    if (numTotal > 0) {
+        asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, "%s flushed %d bytes\n", tty->IPDeviceName, numTotal);
     }
     return asynSuccess;
 }
