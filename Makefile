@@ -55,4 +55,10 @@ endif
 DIRS += testAsynPortClientApp
 testAsynPortClientApp_DEPEND_DIRS = asyn
 
+# We don't try to build asyn documentation here, so we added the
+# html distriubution directory to our version control
+# Thus, we don't want to try and install or uninstall html
+# This keeps the distclean target from removing it.
+INSTALL_HTML	=
+
 include $(TOP)/configure/RULES_TOP
