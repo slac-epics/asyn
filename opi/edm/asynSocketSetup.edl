@@ -3,13 +3,13 @@ beginScreenProperties
 major 4
 minor 0
 release 1
-x 896
-y 24
+x 1182
+y 1591
 w 350
 h 132
-font "helvetica-medium-r-18.0"
-ctlFont "helvetica-medium-r-8.0"
-btnFont "helvetica-medium-r-18.0"
+font "courier-medium-r-14.0"
+ctlFont "courier-medium-r-12.0"
+btnFont "courier-medium-r-14.0"
 fgColor index 14
 bgColor index 4
 textColor index 14
@@ -20,15 +20,16 @@ ctlBgColor2 index 35
 topShadowColor index 37
 botShadowColor index 44
 title "asynRecord Socket $(P)$(R)"
+showGrid
 snapToGrid
-gridSize 5
+gridSize 4
 endScreenProperties
 
 # (Text Control)
 object activeXTextDspClass
 beginObjectProperties
 major 4
-minor 2
+minor 7
 release 0
 x 80
 y 50
@@ -40,7 +41,6 @@ font "courier-medium-r-12.0"
 fgColor index 13
 bgColor index 2
 editable
-autoHeight
 motifWidget
 nullColor index 32
 smartRefresh
@@ -48,6 +48,7 @@ fastUpdate
 useHexPrefix
 newPos
 objType "controls"
+noExecuteClipMask
 endObjectProperties
 
 # (Static Text)
@@ -55,7 +56,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 25
 y 55
 w 49
@@ -67,7 +68,6 @@ useDisplayBg
 value {
   "Socket:"
 }
-autoSize
 endObjectProperties
 
 # (Static Text)
@@ -75,7 +75,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 12
 y 74
 w 210
@@ -87,7 +87,6 @@ useDisplayBg
 value {
   "Format: server:port [protocol]"
 }
-autoSize
 endObjectProperties
 
 # (Static Text)
@@ -95,7 +94,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 12
 y 95
 w 238
@@ -107,7 +106,6 @@ useDisplayBg
 value {
   "e.g. phoebus:21, 164.54.160.12:22,"
 }
-autoSize
 endObjectProperties
 
 # (Static Text)
@@ -115,7 +113,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 12
 y 112
 w 133
@@ -127,23 +125,6 @@ useDisplayBg
 value {
   "  or phoebus:22 UDP"
 }
-autoSize
-endObjectProperties
-
-# (Rectangle)
-object activeRectangleClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 74
-y 8
-w 202
-h 28
-lineColor index 63
-fill
-fillColor index 63
-lineWidth 0
 endObjectProperties
 
 # (Static Text)
@@ -151,19 +132,17 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
-x 135
-y 15
-w 72
-h 15
+release 1
+x 10
+y 5
+w 325
+h 25
 font "courier-bold-r-14.0"
 fontAlign "center"
 fgColor index 13
-bgColor index 0
-useDisplayBg
+bgColor index 63
 value {
   "$(P)$(R)"
 }
-autoSize
 endObjectProperties
 

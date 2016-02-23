@@ -1,15 +1,15 @@
-4 0 0
+4 0 1
 beginScreenProperties
 major 4
 minor 0
-release 0
-x 339
-y 72
+release 1
+x 651
+y 1941
 w 480
 h 140
-font "helvetica-medium-r-18.0"
-ctlFont "helvetica-medium-r-8.0"
-btnFont "helvetica-medium-r-18.0"
+font "courier-medium-r-14.0"
+ctlFont "courier-medium-r-12.0"
+btnFont "courier-medium-r-14.0"
 fgColor index 14
 bgColor index 4
 textColor index 14
@@ -19,26 +19,27 @@ ctlBgColor1 index 34
 ctlBgColor2 index 35
 topShadowColor index 37
 botShadowColor index 44
+showGrid
 snapToGrid
-gridSize 5
+gridSize 4
 endScreenProperties
-
 
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
+minor 1
+release 1
 x 7
 y 70
 w 250
 h 20
-font "helvetica-medium-r-8.0"
+font "courier-medium-r-12.0"
 fgColor index 14
+bgColor index 0
 useDisplayBg
 value {
- "String from socket client"
+  "String from socket client"
 }
 endObjectProperties
 
@@ -46,41 +47,42 @@ endObjectProperties
 object activeXTextDspClass
 beginObjectProperties
 major 4
-minor 0
+minor 7
 release 0
 x 262
 y 70
 w 200
 h 20
 controlPv "$(P)stringInput"
-font "helvetica-medium-r-8.0"
+format "decimal"
+font "courier-medium-r-12.0"
+fgColor index 15
+bgColor index 12
+nullColor index 32
 smartRefresh
 fastUpdate
-fgColor index 14
-bgColor index 51
-autoHeight
-format decimal
-nullColor index 32
 useHexPrefix
-objType "controls"
 newPos
+objType "controls"
+noExecuteClipMask
 endObjectProperties
 
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
+minor 1
+release 1
 x 7
 y 95
 w 250
 h 20
-font "helvetica-medium-r-8.0"
+font "courier-medium-r-12.0"
 fgColor index 14
+bgColor index 0
 useDisplayBg
 value {
- "Response to socket client"
+  "Response to socket client"
 }
 endObjectProperties
 
@@ -88,41 +90,42 @@ endObjectProperties
 object activeXTextDspClass
 beginObjectProperties
 major 4
-minor 0
+minor 7
 release 0
 x 262
 y 95
 w 200
 h 20
 controlPv "$(P)stringOutput"
-font "helvetica-medium-r-8.0"
+format "decimal"
+font "courier-medium-r-12.0"
+fgColor index 15
+bgColor index 12
+nullColor index 32
 smartRefresh
 fastUpdate
-fgColor index 14
-bgColor index 51
-autoHeight
-format decimal
-nullColor index 32
 useHexPrefix
-objType "controls"
 newPos
+objType "controls"
+noExecuteClipMask
 endObjectProperties
 
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
+minor 1
+release 1
 x 7
 y 45
 w 130
 h 20
-font "helvetica-medium-r-8.0"
+font "courier-medium-r-12.0"
 fgColor index 14
+bgColor index 0
 useDisplayBg
 value {
- "Connect state"
+  "Connect state"
 }
 endObjectProperties
 
@@ -130,42 +133,63 @@ endObjectProperties
 object activeXTextDspClass
 beginObjectProperties
 major 4
-minor 0
+minor 7
 release 0
 x 262
 y 45
 w 200
 h 20
 controlPv "$(P)connected"
-font "helvetica-medium-r-8.0"
+format "decimal"
+font "courier-medium-r-12.0"
+fgColor index 15
+fgAlarm
+bgColor index 12
+nullColor index 32
 smartRefresh
 fastUpdate
-fgColor index 14
-fgAlarm
-bgColor index 2
-autoHeight
-format decimal
-nullColor index 32
 useHexPrefix
-objType "controls"
 newPos
+objType "controls"
+noExecuteClipMask
 endObjectProperties
 
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
-x 174
-y 7
-w 132
-h 25
-font "helvetica-medium-r-8.0"
+minor 1
+release 1
+x 356
+y 4
+w 108
+h 24
+font "courier-medium-r-14.0"
+fontAlign "center"
 fgColor index 14
+bgColor index 0
 useDisplayBg
 value {
- "ipSNCServer"
+  "ipSNCServer"
+}
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 4
+y 4
+w 348
+h 24
+font "courier-bold-r-14.0"
+fontAlign "center"
+fgColor index 14
+bgColor index 63
+value {
+  "$(P)$(R)"
 }
 endObjectProperties
 

@@ -1,15 +1,15 @@
-4 0 0
+4 0 1
 beginScreenProperties
 major 4
 minor 0
-release 0
-x 469
-y 198
+release 1
+x 1377
+y 1612
 w 500
 h 360
-font "helvetica-medium-r-18.0"
-ctlFont "helvetica-medium-r-8.0"
-btnFont "helvetica-medium-r-18.0"
+font "courier-medium-r-14.0"
+ctlFont "courier-medium-r-12.0"
+btnFont "courier-medium-r-14.0"
 fgColor index 14
 bgColor index 4
 textColor index 14
@@ -19,43 +19,27 @@ ctlBgColor1 index 34
 ctlBgColor2 index 35
 topShadowColor index 37
 botShadowColor index 44
+showGrid
 snapToGrid
-gridSize 5
+gridSize 4
 endScreenProperties
-
-
-# (Rectangle)
-object activeRectangleClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 25
-y 5
-w 449
-h 24
-lineColor index 54
-fill
-fillColor index 54
-lineWidth 0
-endObjectProperties
 
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
-x 205
-y 5
-w 96
-h 25
-font "helvetica-medium-r-8.0"
+minor 1
+release 1
+x 4
+y 4
+w 488
+h 20
+font "courier-bold-r-14.0"
 fontAlign "center"
-fgColor index 0
-useDisplayBg
+fgColor index 14
+bgColor index 63
 value {
- "$(P)$(R)"
+  "$(P)$(R)"
 }
 endObjectProperties
 
@@ -72,143 +56,83 @@ h 20
 
 beginGroup
 
-
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
+minor 1
+release 1
 x 42
 y 40
 w 90
 h 20
-font "helvetica-medium-r-8.0"
+font "courier-medium-r-12.0"
 fontAlign "center"
 fgColor index 18
+bgColor index 0
 useDisplayBg
-value {
- "Acquiring"
-}
 visPv "CALC\\\{(A)\}($(P)$(R).BUSY)"
 visInvert
-visMin 0
-visMax 1
+visMin "0"
+visMax "1"
+value {
+  "Acquiring"
+}
 endObjectProperties
 
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
+minor 1
+release 1
 x 95
 y 40
 w 40
 h 20
-font "helvetica-medium-r-8.0"
+font "courier-medium-r-12.0"
 fontAlign "center"
 fgColor index 21
+bgColor index 0
 useDisplayBg
-value {
- "Done"
-}
 visPv "CALC\\\{(A)\}($(P)$(R).BUSY)"
-visMin 0
-visMax 1
+visMin "0"
+visMax "1"
+value {
+  "Done"
+}
 endObjectProperties
 
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
+minor 1
+release 1
 x 142
 y 40
 w 60
 h 20
-font "helvetica-medium-r-8.0"
+font "courier-medium-r-12.0"
 fgColor index 14
+bgColor index 0
 useDisplayBg
 value {
- "Status"
+  "Status"
 }
 endObjectProperties
 
 endGroup
 
 endObjectProperties
-
-
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 224
-y 40
-w 235
-h 20
-
-beginGroup
-
-
-# (Text Control)
-object activeXTextDspClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 224
-y 40
-w 100
-h 20
-controlPv "$(P)$(R).NORD"
-font "helvetica-medium-r-8.0"
-fontAlign "right"
-smartRefresh
-fastUpdate
-fgColor index 54
-bgColor index 4
-autoHeight
-format decimal
-nullColor index 32
-useHexPrefix
-objType "controls"
-newPos
-endObjectProperties
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 329
-y 40
-w 130
-h 20
-font "helvetica-medium-r-8.0"
-fgColor index 14
-useDisplayBg
-value {
- "Current point"
-}
-endObjectProperties
-
-endGroup
-
-endObjectProperties
-
 
 # (X-Y Graph)
 object xyGraphClass
 beginObjectProperties
 major 4
-minor 0
+minor 7
 release 0
+# Geometry
 x 10
 y 92
 w 480
@@ -221,24 +145,25 @@ yLabel "Value"
 fgColor index 14
 bgColor index 2
 gridColor index 14
-font "helvetica-medium-r-10.0"
+font "courier-medium-r-12.0"
 # Operating Modes
 plotMode "plotLastNPts"
 nPts 1
-#  X axis properties
+# X axis properties
 showXAxis
 xAxisSrc "AutoScale"
+xMax 1
 xLablePrecision 1
-#  Y axis properties
+# Y axis properties
 showYAxis
 yAxisSrc "AutoScale"
-#  Trace Properties
+yMax 1
+# Y2 axis properties
+y2Max 1
+# Trace Properties
 numTraces 1
 yPv {
   0 "$(P)$(R).VAL"
-}
-plotStyle {
-  0 "line"
 }
 plotUpdateMode {
   0 "x"
@@ -255,61 +180,26 @@ endObjectProperties
 object activeXTextClass
 beginObjectProperties
 major 4
-minor 0
-release 0
+minor 1
+release 1
 x 117
 y 329
 w 90
 h 20
-font "helvetica-medium-r-8.0"
+font "courier-medium-r-12.0"
 fgColor index 14
+bgColor index 0
 useDisplayBg
 value {
- "Read rate"
+  "Read rate"
 }
 endObjectProperties
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 42
-y 40
-w 160
-h 20
-
-beginGroup
-
-
-endGroup
-
-endObjectProperties
-
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 224
-y 40
-w 235
-h 20
-
-beginGroup
-
-
-endGroup
-
-endObjectProperties
-
 
 # (Message Button)
 object activeMessageButtonClass
 beginObjectProperties
 major 4
-minor 0
+minor 1
 release 0
 x 15
 y 65
@@ -322,19 +212,18 @@ topShadowColor index 0
 botShadowColor index 14
 controlPv "$(P)$(R).RARM"
 pressValue "1"
-releaseValue 
 onLabel "Erase/Start"
 offLabel "Erase/Start"
 3d
 useEnumNumeric
-font "helvetica-medium-r-10.0"
+font "courier-medium-r-12.0"
 endObjectProperties
 
 # (Message Button)
 object activeMessageButtonClass
 beginObjectProperties
 major 4
-minor 0
+minor 1
 release 0
 x 110
 y 65
@@ -347,19 +236,18 @@ topShadowColor index 0
 botShadowColor index 14
 controlPv "$(P)$(R).RARM"
 pressValue "3"
-releaseValue 
 onLabel "Start"
 offLabel "Start"
 3d
 useEnumNumeric
-font "helvetica-medium-r-10.0"
+font "courier-medium-r-12.0"
 endObjectProperties
 
 # (Message Button)
 object activeMessageButtonClass
 beginObjectProperties
 major 4
-minor 0
+minor 1
 release 0
 x 205
 y 65
@@ -372,12 +260,11 @@ topShadowColor index 0
 botShadowColor index 14
 controlPv "$(P)$(R).RARM"
 pressValue "2"
-releaseValue 
 onLabel "Stop"
 offLabel "Stop"
 3d
 useEnumNumeric
-font "helvetica-medium-r-10.0"
+font "courier-medium-r-12.0"
 endObjectProperties
 
 # (Menu Button)
@@ -397,14 +284,14 @@ topShadowColor index 2
 botShadowColor index 12
 controlPv "$(P)$(R)Read.SCAN"
 indicatorPv "$(P)$(R)Read.SCAN"
-font "helvetica-medium-r-10.0"
+font "courier-medium-r-12.0"
 endObjectProperties
 
 # (Message Button)
 object activeMessageButtonClass
 beginObjectProperties
 major 4
-minor 0
+minor 1
 release 0
 x 217
 y 329
@@ -417,11 +304,54 @@ topShadowColor index 0
 botShadowColor index 14
 controlPv "$(P)$(R)Read.PROC"
 pressValue "1"
-releaseValue 
 onLabel "Read"
 offLabel "Read"
 3d
 useEnumNumeric
-font "helvetica-medium-r-10.0"
+font "courier-medium-r-12.0"
+endObjectProperties
+
+# (Text Control)
+object activeXTextDspClass
+beginObjectProperties
+major 4
+minor 7
+release 0
+x 224
+y 40
+w 100
+h 20
+controlPv "$(P)$(R).NORD"
+format "decimal"
+font "courier-medium-r-12.0"
+fontAlign "right"
+fgColor index 15
+bgColor index 12
+nullColor index 32
+smartRefresh
+fastUpdate
+useHexPrefix
+newPos
+objType "controls"
+noExecuteClipMask
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 329
+y 40
+w 130
+h 20
+font "courier-medium-r-12.0"
+fgColor index 14
+bgColor index 0
+useDisplayBg
+value {
+  "Current point"
+}
 endObjectProperties
 
