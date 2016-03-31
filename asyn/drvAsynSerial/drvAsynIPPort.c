@@ -860,7 +860,7 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
                 int newlen = ntohl(((lecroy_t *)dest)->length);
                 asynPrint(pasynUser, ASYN_TRACE_FLOW,
                           "%s found header at offset %d.\n", tty->IPDeviceName, offset);
-                memmove(dest, dest + sizeof(lecroy_t), thisRead - offset - sizeof(lecroy_t));
+                memmove(dest, dest + sizeof(lecroy_t), thisRead - tty->lecroy_length - offset - sizeof(lecroy_t));
                 thisRead -= sizeof(lecroy_t);
                 offset += tty->lecroy_length;
                 tty->lecroy_length = newlen;
