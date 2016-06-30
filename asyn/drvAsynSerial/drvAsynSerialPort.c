@@ -1,3 +1,4 @@
+#define OPTION_TTYNAME
 /**********************************************************************
 * Asyn device support using local serial interface                    *
 **********************************************************************/       
@@ -466,6 +467,12 @@ setOption(void *drvPvt, asynUser *pasynUser, const char *key, const char *val)
         }
 #endif
     }
+#ifdef OPTION_TTYNAME
+    else if (epicsStrCaseCmp(key, "ttyname") == 0) {
+        assert(tty->fd < 0);
+        tty->serialDeviceName = epicsStrDup(val);
+    }
+#endif /* OPTION_TTYNAME */
     else if (epicsStrCaseCmp(key, "") != 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                                                 "Unsupported key \"%s\"", key);
@@ -730,6 +737,20 @@ static asynStatus readIt(void *drvPvt, asynUser *pasynUser,
     if (tty->fd < 0) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                                 "%s disconnected:", tty->serialDeviceName);
+#ifdef OPTION_TTYNAME
+        if (pasynUser->timeout > 0)
+            sleep(pasynUser->timeout);
+        else {
+            /*
+             * MCB - OK, this bears a little explanation: why are we
+             * sleeping if the user has requested no wait (0)?  The
+             * answer is that if we're disconnected, this will be called
+             * a *LOT*, so we are self-throttling here.  Yes, we should
+             * probably do this from where this is being called, but...
+             */
+            sleep(1);
+        }
+#endif /* OPTION_TTYNAME */
         return asynError;
     }
     if (maxchars <= 0) {
