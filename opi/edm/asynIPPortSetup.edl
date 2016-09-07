@@ -3,10 +3,10 @@ beginScreenProperties
 major 4
 minor 0
 release 0
-x 154
-y 74
+x 500
+y 77
 w 260
-h 300
+h 410
 font "helvetica-medium-r-18.0"
 ctlFont "helvetica-medium-r-8.0"
 btnFont "helvetica-medium-r-18.0"
@@ -135,7 +135,7 @@ fontAlign "right"
 fgColor index 14
 useDisplayBg
 value {
- "Baud rate:"
+ "Disconnect on"
 }
 endObjectProperties
 
@@ -154,7 +154,26 @@ fontAlign "right"
 fgColor index 14
 useDisplayBg
 value {
- "Baud rate:"
+ "read timeout:"
+}
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 8
+y 101
+w 135
+h 20
+font "helvetica-medium-r-8.0"
+fontAlign "right"
+fgColor index 14
+useDisplayBg
+value {
+ "Host info:"
 }
 endObjectProperties
 
@@ -164,10 +183,69 @@ beginObjectProperties
 major 4
 minor 0
 release 0
-x 8
+x 150
+y 76
+w 102
+h 43
+
+beginGroup
+
+
+# (Text Control)
+object activeXTextDspClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 150
 y 101
+w 102
+h 18
+controlPv "$(P)$(R).HOSTINFO"
+font "helvetica-medium-r-8.0"
+smartRefresh
+fastUpdate
+fgColor index 14
+bgColor index 51
+editable
+autoHeight
+format decimal
+motifWidget
+nullColor index 32
+useHexPrefix
+objType "controls"
+newPos
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
+
+# (Group)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 5
+y 130
+w 250
+h 271
+
+beginGroup
+
+
+# (Group)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 8
+y 181
 w 244
-h 195
+h 220
 
 beginGroup
 
@@ -179,7 +257,7 @@ major 4
 minor 0
 release 0
 x 8
-y 101
+y 206
 w 135
 h 20
 font "helvetica-medium-r-8.0"
@@ -198,7 +276,7 @@ major 4
 minor 0
 release 0
 x 8
-y 126
+y 231
 w 135
 h 20
 font "helvetica-medium-r-8.0"
@@ -217,7 +295,7 @@ major 4
 minor 0
 release 0
 x 8
-y 176
+y 281
 w 135
 h 20
 font "helvetica-medium-r-8.0"
@@ -236,7 +314,7 @@ major 4
 minor 0
 release 0
 x 8
-y 151
+y 256
 w 135
 h 20
 font "helvetica-medium-r-8.0"
@@ -255,7 +333,7 @@ major 4
 minor 0
 release 0
 x 8
-y 201
+y 306
 w 135
 h 20
 font "helvetica-medium-r-8.0"
@@ -274,7 +352,7 @@ major 4
 minor 0
 release 0
 x 8
-y 226
+y 331
 w 135
 h 20
 font "helvetica-medium-r-8.0"
@@ -293,7 +371,7 @@ major 4
 minor 0
 release 0
 x 8
-y 251
+y 356
 w 135
 h 20
 font "helvetica-medium-r-8.0"
@@ -312,7 +390,7 @@ major 4
 minor 0
 release 0
 x 8
-y 276
+y 381
 w 135
 h 20
 font "helvetica-medium-r-8.0"
@@ -324,10 +402,24 @@ value {
 }
 endObjectProperties
 
-endGroup
-
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 8
+y 181
+w 135
+h 20
+font "helvetica-medium-r-8.0"
+fontAlign "right"
+fgColor index 14
+useDisplayBg
+value {
+ "Baud rate:"
+}
 endObjectProperties
-
 
 # (Text Control)
 object activeXTextDspClass
@@ -336,7 +428,7 @@ major 4
 minor 0
 release 0
 x 150
-y 76
+y 181
 w 102
 h 18
 controlPv "$(P)$(R).LBAUD"
@@ -355,35 +447,63 @@ objType "controls"
 newPos
 endObjectProperties
 
-# (Menu Button)
-object activeMenuButtonClass
+endGroup
+
+endObjectProperties
+
+
+# (Static Text)
+object activeXTextClass
 beginObjectProperties
 major 4
 minor 0
 release 0
-x 150
-y 51
-w 102
+x 15
+y 151
+w 230
 h 20
+font "helvetica-medium-r-8.0"
+fontAlign "right"
 fgColor index 14
-bgColor index 51
-inconsistentColor index 12
-topShadowColor index 2
-botShadowColor index 12
-controlPv "$(P)$(R).BAUD"
-indicatorPv "$(P)$(R).BAUD"
-font "helvetica-medium-r-10.0"
+useDisplayBg
+value {
+ "COM (RFC 2217) protocol"
+}
 endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 5
+y 130
+w 250
+h 20
+font "helvetica-medium-r-8.0"
+fontAlign "right"
+fgColor index 14
+useDisplayBg
+value {
+ "Parameters for ports with"
+}
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
 # (Group)
 object activeGroupClass
 beginObjectProperties
 major 4
 minor 0
 release 0
-x 8
-y 101
-w 244
-h 195
+x 150
+y 76
+w 102
+h 43
 
 beginGroup
 
@@ -395,7 +515,58 @@ major 4
 minor 0
 release 0
 x 150
-y 101
+y 76
+w 102
+h 20
+fgColor index 14
+bgColor index 51
+inconsistentColor index 12
+topShadowColor index 2
+botShadowColor index 12
+controlPv "$(P)$(R).DRTO"
+indicatorPv "$(P)$(R).DRTO"
+font "helvetica-medium-r-10.0"
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
+# (Group)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 5
+y 130
+w 250
+h 271
+
+beginGroup
+
+# (Group)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 8
+y 181
+w 244
+h 220
+
+beginGroup
+
+
+# (Menu Button)
+object activeMenuButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 150
+y 206
 w 102
 h 20
 fgColor index 14
@@ -415,7 +586,7 @@ major 4
 minor 0
 release 0
 x 150
-y 126
+y 231
 w 102
 h 20
 fgColor index 14
@@ -435,7 +606,7 @@ major 4
 minor 0
 release 0
 x 150
-y 151
+y 256
 w 102
 h 20
 fgColor index 14
@@ -455,7 +626,7 @@ major 4
 minor 0
 release 0
 x 150
-y 176
+y 281
 w 102
 h 20
 fgColor index 14
@@ -475,7 +646,7 @@ major 4
 minor 0
 release 0
 x 150
-y 201
+y 306
 w 102
 h 20
 fgColor index 14
@@ -495,7 +666,7 @@ major 4
 minor 0
 release 0
 x 150
-y 226
+y 331
 w 102
 h 20
 fgColor index 14
@@ -515,7 +686,7 @@ major 4
 minor 0
 release 0
 x 150
-y 251
+y 356
 w 102
 h 20
 fgColor index 14
@@ -535,7 +706,7 @@ major 4
 minor 0
 release 0
 x 150
-y 276
+y 381
 w 102
 h 20
 fgColor index 14
@@ -547,6 +718,11 @@ controlPv "$(P)$(R).IXANY"
 indicatorPv "$(P)$(R).IXANY"
 font "helvetica-medium-r-10.0"
 endObjectProperties
+
+endGroup
+
+endObjectProperties
+
 
 endGroup
 

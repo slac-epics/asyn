@@ -23,7 +23,7 @@
 /* Version number names similar to those provide by base
  * These macros are always numeric */
 #define ASYN_VERSION       4
-#define ASYN_REVISION     28
+#define ASYN_REVISION     29
 #define ASYN_MODIFICATION  0
 
 #ifdef __cplusplus
@@ -40,6 +40,12 @@ typedef enum {
     asynExceptionTraceMask,asynExceptionTraceIOMask,asynExceptionTraceInfoMask,
     asynExceptionTraceFile,asynExceptionTraceIOTruncateSize
 } asynException;
+
+#define ASYN_EXCEPTION_STRINGS                                                          \
+    "asynExceptionConnect",   "asynExceptionEnable",      "asynExceptionAutoConnect",   \
+    "asynExceptionTraceMask", "asynExceptionTraceIOMask", "asynExceptionTraceInfoMask", \
+    "asynExceptionTraceFile", "asynExceptionTraceIOTruncateSize"
+extern  const char * asynExceptionToString( asynException e );
 
 typedef enum {
     asynQueuePriorityLow,asynQueuePriorityMedium,asynQueuePriorityHigh,

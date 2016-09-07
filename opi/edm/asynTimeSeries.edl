@@ -3,10 +3,10 @@ beginScreenProperties
 major 4
 minor 0
 release 0
-x 288
-y 334
-w 375
-h 185
+x 469
+y 198
+w 500
+h 360
 font "helvetica-medium-r-18.0"
 ctlFont "helvetica-medium-r-8.0"
 btnFont "helvetica-medium-r-18.0"
@@ -24,33 +24,19 @@ gridSize 5
 endScreenProperties
 
 
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 86
-y 8
-w 203
-h 29
-
-beginGroup
-
-
 # (Rectangle)
 object activeRectangleClass
 beginObjectProperties
 major 4
 minor 0
 release 0
-x 86
-y 8
-w 202
-h 28
-lineColor index 2
+x 25
+y 5
+w 449
+h 24
+lineColor index 54
 fill
-fillColor index 2
+fillColor index 54
 lineWidth 0
 endObjectProperties
 
@@ -60,33 +46,28 @@ beginObjectProperties
 major 4
 minor 0
 release 0
-x 89
-y 12
-w 199
-h 21
+x 205
+y 5
+w 96
+h 25
 font "helvetica-medium-r-8.0"
 fontAlign "center"
-fgColor index 14
+fgColor index 0
 useDisplayBg
 value {
  "$(P)$(R)"
 }
 endObjectProperties
 
-endGroup
-
-endObjectProperties
-
-
 # (Group)
 object activeGroupClass
 beginObjectProperties
 major 4
 minor 0
 release 0
-x 4
-y 68
-w 210
+x 42
+y 40
+w 160
 h 20
 
 beginGroup
@@ -98,182 +79,18 @@ beginObjectProperties
 major 4
 minor 0
 release 0
-x 4
-y 68
-w 130
-h 20
-font "helvetica-medium-r-8.0"
-fgColor index 14
-useDisplayBg
-value {
- "GPIB address:"
-}
-endObjectProperties
-
-# (Text Control)
-object activeXTextDspClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 139
-y 68
-w 75
-h 20
-controlPv "$(P)$(R).ADDR"
-font "helvetica-medium-r-8.0"
-smartRefresh
-fastUpdate
-fgColor index 14
-bgColor index 51
-editable
-autoHeight
-format decimal
-motifWidget
-nullColor index 32
-useHexPrefix
-objType "controls"
-newPos
-endObjectProperties
-
-endGroup
-
-endObjectProperties
-
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 4
-y 97
-w 210
-h 20
-font "helvetica-medium-r-8.0"
-fgColor index 14
-useDisplayBg
-value {
- "Serial poll response:"
-}
-endObjectProperties
-
-# (Text Control)
-object activeXTextDspClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 224
-y 97
-w 56
-h 20
-controlPv "$(P)$(R).SPR"
-font "helvetica-medium-r-8.0"
-smartRefresh
-fastUpdate
-fgColor index 14
-bgColor index 51
-autoHeight
-format "hex"
-nullColor index 32
-useHexPrefix
-objType "controls"
-newPos
-endObjectProperties
-
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 4
-y 126
-w 355
-h 20
-
-beginGroup
-
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 4
-y 126
-w 170
-h 20
-font "helvetica-medium-r-8.0"
-fgColor index 14
-useDisplayBg
-value {
- "Universal Command"
-}
-endObjectProperties
-
-endGroup
-
-endObjectProperties
-
-
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 4
-y 151
-w 355
-h 20
-
-beginGroup
-
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 4
-y 151
-w 170
-h 20
-font "helvetica-medium-r-8.0"
-fgColor index 14
-useDisplayBg
-value {
- "Addressed Command"
-}
-endObjectProperties
-
-endGroup
-
-endObjectProperties
-
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 218
-y 42
+x 42
+y 40
 w 90
 h 20
 font "helvetica-medium-r-8.0"
-fgColor index 17
+fontAlign "center"
+fgColor index 18
 useDisplayBg
 value {
- "Supported"
+ "Acquiring"
 }
-visPv "CALC\\\{(A)\}($(P)$(R).GPIBIV)"
+visPv "CALC\\\{(A)\}($(P)$(R).BUSY)"
 visInvert
 visMin 0
 visMax 1
@@ -285,17 +102,18 @@ beginObjectProperties
 major 4
 minor 0
 release 0
-x 208
-y 42
-w 110
+x 95
+y 40
+w 40
 h 20
 font "helvetica-medium-r-8.0"
+fontAlign "center"
 fgColor index 21
 useDisplayBg
 value {
- "Unsupported"
+ "Done"
 }
-visPv "CALC\\\{(A)\}($(P)$(R).GPIBIV)"
+visPv "CALC\\\{(A)\}($(P)$(R).BUSY)"
 visMin 0
 visMax 1
 endObjectProperties
@@ -306,15 +124,148 @@ beginObjectProperties
 major 4
 minor 0
 release 0
-x 4
-y 42
-w 200
+x 142
+y 40
+w 60
 h 20
 font "helvetica-medium-r-8.0"
 fgColor index 14
 useDisplayBg
 value {
- "asynGpib interface:"
+ "Status"
+}
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
+
+# (Group)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 224
+y 40
+w 235
+h 20
+
+beginGroup
+
+
+# (Text Control)
+object activeXTextDspClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 224
+y 40
+w 100
+h 20
+controlPv "$(P)$(R).NORD"
+font "helvetica-medium-r-8.0"
+fontAlign "right"
+smartRefresh
+fastUpdate
+fgColor index 54
+bgColor index 4
+autoHeight
+format decimal
+nullColor index 32
+useHexPrefix
+objType "controls"
+newPos
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 329
+y 40
+w 130
+h 20
+font "helvetica-medium-r-8.0"
+fgColor index 14
+useDisplayBg
+value {
+ "Current point"
+}
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+
+
+# (X-Y Graph)
+object xyGraphClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 92
+w 480
+h 230
+# Appearance
+border
+graphTitle "$(P)$(R)"
+xLabel "Time point"
+yLabel "Value"
+fgColor index 14
+bgColor index 2
+gridColor index 14
+font "helvetica-medium-r-10.0"
+# Operating Modes
+plotMode "plotLastNPts"
+nPts 1
+#  X axis properties
+showXAxis
+xAxisSrc "AutoScale"
+xLablePrecision 1
+#  Y axis properties
+showYAxis
+yAxisSrc "AutoScale"
+#  Trace Properties
+numTraces 1
+yPv {
+  0 "$(P)$(R).VAL"
+}
+plotStyle {
+  0 "line"
+}
+plotUpdateMode {
+  0 "x"
+}
+plotSymbolType {
+  0 "circle"
+}
+plotColor {
+  0 index 27
+}
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 117
+y 329
+w 90
+h 20
+font "helvetica-medium-r-8.0"
+fgColor index 14
+useDisplayBg
+value {
+ "Read rate"
 }
 endObjectProperties
 # (Group)
@@ -323,27 +274,9 @@ beginObjectProperties
 major 4
 minor 0
 release 0
-x 86
-y 8
-w 203
-h 29
-
-beginGroup
-
-
-endGroup
-
-endObjectProperties
-
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 4
-y 68
-w 210
+x 42
+y 40
+w 160
 h 20
 
 beginGroup
@@ -359,13 +292,93 @@ beginObjectProperties
 major 4
 minor 0
 release 0
-x 4
-y 126
-w 355
+x 224
+y 40
+w 235
 h 20
 
 beginGroup
 
+
+endGroup
+
+endObjectProperties
+
+
+# (Message Button)
+object activeMessageButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 15
+y 65
+w 90
+h 20
+fgColor index 14
+onColor index 51
+offColor index 51
+topShadowColor index 0
+botShadowColor index 14
+controlPv "$(P)$(R).RARM"
+pressValue "1"
+releaseValue 
+onLabel "Erase/Start"
+offLabel "Erase/Start"
+3d
+useEnumNumeric
+font "helvetica-medium-r-10.0"
+endObjectProperties
+
+# (Message Button)
+object activeMessageButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 110
+y 65
+w 90
+h 20
+fgColor index 14
+onColor index 51
+offColor index 51
+topShadowColor index 0
+botShadowColor index 14
+controlPv "$(P)$(R).RARM"
+pressValue "3"
+releaseValue 
+onLabel "Start"
+offLabel "Start"
+3d
+useEnumNumeric
+font "helvetica-medium-r-10.0"
+endObjectProperties
+
+# (Message Button)
+object activeMessageButtonClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 205
+y 65
+w 90
+h 20
+fgColor index 14
+onColor index 51
+offColor index 51
+topShadowColor index 0
+botShadowColor index 14
+controlPv "$(P)$(R).RARM"
+pressValue "2"
+releaseValue 
+onLabel "Stop"
+offLabel "Stop"
+3d
+useEnumNumeric
+font "helvetica-medium-r-10.0"
+endObjectProperties
 
 # (Menu Button)
 object activeMenuButtonClass
@@ -373,60 +386,42 @@ beginObjectProperties
 major 4
 minor 0
 release 0
-x 179
-y 126
-w 180
+x 10
+y 329
+w 100
 h 20
 fgColor index 14
 bgColor index 51
 inconsistentColor index 12
 topShadowColor index 2
 botShadowColor index 12
-controlPv "$(P)$(R).UCMD"
-indicatorPv "$(P)$(R).UCMD"
+controlPv "$(P)$(R)Read.SCAN"
+indicatorPv "$(P)$(R)Read.SCAN"
 font "helvetica-medium-r-10.0"
 endObjectProperties
 
-endGroup
-
-endObjectProperties
-
-# (Group)
-object activeGroupClass
+# (Message Button)
+object activeMessageButtonClass
 beginObjectProperties
 major 4
 minor 0
 release 0
-x 4
-y 151
-w 355
-h 20
-
-beginGroup
-
-
-# (Menu Button)
-object activeMenuButtonClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 179
-y 151
-w 180
+x 217
+y 329
+w 50
 h 20
 fgColor index 14
-bgColor index 51
-inconsistentColor index 12
-topShadowColor index 2
-botShadowColor index 12
-controlPv "$(P)$(R).ACMD"
-indicatorPv "$(P)$(R).ACMD"
+onColor index 51
+offColor index 51
+topShadowColor index 0
+botShadowColor index 14
+controlPv "$(P)$(R)Read.PROC"
+pressValue "1"
+releaseValue 
+onLabel "Read"
+offLabel "Read"
+3d
+useEnumNumeric
 font "helvetica-medium-r-10.0"
 endObjectProperties
-
-endGroup
-
-endObjectProperties
-
 
