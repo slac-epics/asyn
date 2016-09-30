@@ -1,0 +1,22 @@
+# RELEASE.local Location of external products
+
+
+# Get EPICS_BASE and EPICS_MODULES from TOP/../..
+include $(TOP)/../../RELEASE.local
+
+# ==================================================
+# Dependent module versions
+# ==================================================
+#  IPAC is only necessary if support for Greensprings IP488 is required
+#  IPAC release V2-7 or later is required.
+IPAC_MODULE_VERSION=ipac-R2-11_1-2
+
+# SNCSEQ is required for testIPServer
+#SNCSEQ_MODULE_VERSION=seq-R2-1-6_1-3
+
+# ==================================================
+# Dependent module paths
+# ==================================================
+IPAC=$(EPICS_MODULES)/ipac/$(IPAC_MODULE_VERSION)
+#SNCSEQ=$(EPICS_MODULES)/seq/$(SNCSEQ_MODULE_VERSION)
+
