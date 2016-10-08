@@ -4,11 +4,15 @@
 #
 #==============================================================
 
+R4.30-1.0.1:	8-Oct-2016, B. Hill  (bhill)
+	Updated ipac to R2.11-1.3.0
+
 R4.30-1.0.0:	7-Oct-2016, B. Hill  (bhill)
-  Merged in asyn version 4-30: see documentation directory
-	  for detailed release notes
-  Moved local build support from CONFIG_SITE and RELEASE to RELEASE.local
-  Added some more parameter names to asyn error messages
-  Merged in PCDS support for LeCroy scope
-  Merged in PCDS support for OPTION_TTYNAME
+	Updated ipac to R2.8-1.2.0
+	Merged in asyn version 4-30: see documentation directory
+		for detailed release notes
+	Moved local build support from CONFIG_SITE and RELEASE to RELEASE.local
+	Added some more parameter names to asyn error messages
+	Merged in PCDS support for LeCroy scope
+	Merged in PCDS support for OPTION_TTYNAME
 
