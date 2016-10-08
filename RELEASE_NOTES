@@ -30,12 +30,15 @@
 # 
 #==============================================================
 #
-asyn-R4.30-0.1.0: 29-Sep-2016, B. Hill  (bhill)
-                  Merged in asyn version 4-30: see documentation directory
-                      for detailed release notes
-                  Moved local build support from CONFIG_SITE and RELEASE to RELEASE.local
-                  Reverted some old keyword expansions and reverted non-local build
-                      files to match collaboration.
+R4.30-0.1.1:	8-Oct-2016, B. Hill  (bhill)
+	Changed ipac version to R2.8-1.2.0
+
+R4.30-0.1.0:	29-Sep-2016, B. Hill  (bhill)
+	Merged in asyn version 4-30: see documentation directory
+		for detailed release notes
+	Moved local build support from CONFIG_SITE and RELEASE to RELEASE.local
+	Reverted some old keyword expansions and reverted non-local build
+		files to match collaboration.
 
 asyn-R4-26_0:     Merge in the new asyn version 4-26: see documentation directory
                   for detailed release notes

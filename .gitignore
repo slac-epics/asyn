@@ -1,5 +1,6 @@
 *~
 O.*
+*.log
 *.swp
 *_BAK.adl
 bin/

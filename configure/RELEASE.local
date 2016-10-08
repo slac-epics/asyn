@@ -9,7 +9,7 @@ include $(TOP)/../../RELEASE.local
 # ==================================================
 #  IPAC is only necessary if support for Greensprings IP488 is required
 #  IPAC release V2-7 or later is required.
-IPAC_MODULE_VERSION=ipac-R2-11_1-2
+IPAC_MODULE_VERSION		= R2.8-1.2.0
 
 # SNCSEQ is required for testIPServer
 #SNCSEQ_MODULE_VERSION=seq-R2-1-6_1-3
