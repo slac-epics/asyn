@@ -1,5 +1,5 @@
 # RELEASE.local
-
+#
 # Fetch path relative EPICS_BASE and EPICS_MODULES
 # from one of the following options
 -include $(TOP)/../../RELEASE_SITE
@@ -12,18 +12,15 @@ $(error Two RELEASE_SITE files found: $(TOP)/RELEASE_SITE and $(TOP)/../../RELEA
 endif
 endif
 
-# Check for undefined EPICS_BASE or EPICS_MODULES
-ifndef EPICS_BASE
-ifneq ($(wildcard "include $(TOP)/../../RELEASE_SITE"),)
-$(info RELEASE_SITE Read: $(TOP)/../../RELEASE_SITE)
-endif
-ifneq ($(wildcard "include $(TOP)/RELEASE_SITE"),)
-$(info RELEASE_SITE Read: $(TOP)/RELEASE_SITE)
-endif
-$(error EPICS_BASE not defined!)
-endif
+# Check for undefined EPICS_MODULES
 ifndef EPICS_MODULES
-$(error EPICS_MODULES not defined!)
+	ifneq ($(wildcard "include $(TOP)/../../RELEASE_SITE"),)
+		$(info RELEASE_SITE Read: $(TOP)/../../RELEASE_SITE)
+	endif
+	ifneq ($(wildcard "include $(TOP)/RELEASE_SITE"),)
+		$(info RELEASE_SITE Read: $(TOP)/RELEASE_SITE)
+	endif
+	$(error EPICS_MODULES not defined!)
 endif
 
 # ==========================================================
@@ -47,11 +44,25 @@ IPAC_MODULE_VERSION		= R2.11-1.3.0
 #  or
 # FOO = /Full/Path/To/Development/Version 
 # ==========================================================
-IPAC=$(EPICS_MODULES)/ipac/$(IPAC_MODULE_VERSION)
-#SNCSEQ=$(EPICS_MODULES)/seq/$(SNCSEQ_MODULE_VERSION)
+IPAC     = $(EPICS_MODULES)/ipac/$(IPAC_MODULE_VERSION)
+#SNCSEQ  = $(EPICS_MODULES)/seq/$(SNCSEQ_MODULE_VERSION)
 
 # Make sure IPAC path exists
 ifeq ($(wildcard $(IPAC)),)
 $(error IPAC path not found: $(IPAC))
+endif
+
+# Set EPICS_BASE last so it appears last in the DB, DBD, INCLUDE, and LIB search paths
+EPICS_BASE              = $(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
+
+# Check for undefined EPICS_BASE
+ifndef EPICS_BASE
+	ifneq ($(wildcard "include $(TOP)/../../RELEASE_SITE"),)
+		$(info RELEASE_SITE Read: $(TOP)/../../RELEASE_SITE)
+	endif
+	ifneq ($(wildcard "include $(TOP)/RELEASE_SITE"),)
+		$(info RELEASE_SITE Read: $(TOP)/RELEASE_SITE)
+	endif
+	$(error EPICS_BASE not defined!)
 endif
 
