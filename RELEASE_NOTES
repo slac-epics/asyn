@@ -30,6 +30,9 @@
 # 
 #==============================================================
 #
+R2.14-0.3.0:   6-Feb-2017, E. Williams (ernesto)
+               Changed IPAC version R2.14-0.1.0
+
 R4.30-0.2.0:	15-Oct-2016, B. Hill  (bhill)
 	Tweaked to set EPICS_BASE last.
 
