@@ -4,6 +4,12 @@
 #
 #==============================================================
 
+R4.30-1.1.2:	14-Mar-2017, B. Hill  (bhill)
+	Bumped up to ipac/R2.11-1.5.0
+
+R4.30-1.1.1:	11-Jan-2017, B. Hill  (bhill)
+	Bumped up to ipac/R2.11-1.4.1
+
 R4.30-1.1.0:	15-Oct-2016, B. Hill  (bhill)
 	Tweaked build to set EPICS_BASE last.
 
