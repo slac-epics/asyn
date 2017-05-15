@@ -1144,10 +1144,12 @@ static asynStatus connectDevice(asynRecord * pasynRec)
     callbackMessage *pmsg;
 
     resetError(pasynRec);
+    printf("********************* DEBUG HUGO: asynDriver - inside connectDevice will call disconnect for port: %s and addr: %d\n", pasynRec->port, pasynRec->addr);
     /* Disconnect any connected device.  Ignore error if there is no device
      * currently connected. */
     pasynManager->exceptionCallbackRemove(pasynUser);
     pasynManager->disconnect(pasynUser);
+    printf("********************* DEBUG HUGO: asynDriver - inside connectDevice will call connect for port: %s and addr: %d\n", pasynRec->port, pasynRec->addr);
     /* Connect to the new device */
     status = pasynManager->connectDevice(pasynUser, pasynRec->port,
                                          pasynRec->addr);
@@ -1301,6 +1303,7 @@ static asynStatus connectDevice(asynRecord * pasynRec)
     goto done;
 
     bad:
+    printf("********************* DEBUG HUGO: asynDriver - inside connectDevice something bad happened and we did a goto BAD\n");
     /* Disconnect any connected device again, since failure could have happened
        after connect succeeded.  Ignore error if there is no device
      * currently connected. */

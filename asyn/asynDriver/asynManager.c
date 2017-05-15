@@ -515,7 +515,7 @@ static tracePvt *findTracePvt(userPvt *puserPvt)
 static port *locatePort(const char *portName)
 {
     port *pport;
-
+    if(!portName) return pport;
     if(!pasynBase) asynInit();
     epicsMutexMustLock(pasynBase->lock);
     pport = (port *)ellFirst(&pasynBase->asynPortList);
@@ -532,16 +532,20 @@ static device *locateDevice(port *pport,int addr,BOOL allocNew)
     device *pdevice;
 
     assert(pport);
+    printf("********************* DEBUG HUGO: Inside locateDevice with: portName=%s, addr=%d\n", pport->portName, addr);
     if(!(pport->attributes&ASYN_MULTIDEVICE) || addr < 0) return(0);
     pdevice = (device *)ellFirst(&pport->deviceList);
     while(pdevice) {
+        printf("********************* DEBUG HUGO: Inside locateDevice loop: pdevice->addr=%d\n", pdevice->addr);
         if(pdevice->addr == addr) return pdevice;
         pdevice = (device *)ellNext(&pdevice->node);
     }
     if(!pdevice && allocNew) {
+        printf("********************* DEBUG HUGO: Inside locateDevice pdevice is null and we will allocNew\n");
         pdevice = callocMustSucceed(1,sizeof(device),
             "asynManager:locateDevice");
         pdevice->addr = addr;
+        printf("********************* DEBUG HUGO: Inside locateDevice will call dpCommonInit.\n");        
         dpCommonInit(pport,pdevice,pport->dpc.autoConnect);
         ellAdd(&pport->deviceList,&pdevice->node);
     }
@@ -664,11 +668,13 @@ static void queueTimeoutCallback(void *pvt)
 /*autoConnectDevice must be called with asynManagerLock held*/
 static BOOL autoConnectDevice(port *pport,device *pdevice)
 {
+    printf("********************** DEBUG HUGO: asynManager - inside autoConnectDevice, portName: %s \n", pport->portName);
     if(!pport->dpc.connected
     &&  pport->dpc.autoConnect
     && !pport->dpc.autoConnectActive) {
         epicsTimeStamp now;
 
+        printf("********************** DEBUG HUGO: asynManager - inside autoConnectDevice, connected=0, autoConnect=1 and autoConnectActive=0\n");
         epicsTimeGetCurrent(&now);
         if(epicsTimeDiffInSeconds(
              &now,&pport->dpc.lastConnectDisconnect) < 2.0) return FALSE;
@@ -709,10 +715,12 @@ static void connectAttempt(dpCommon *pdpCommon)
     void           *drvPvt = 0;
     asynStatus     status;
     int            addr;
-
     addr = (pdevice ? pdevice->addr : -1);
+    //addr = (pdevice ? pdevice->addr : 0);
+    printf("************** DEBUG HUGO: asynManager - inside connectAttempt with dpCommon as parameter, portName=%s, addr=%d\n", pport->portName, addr);
     status = pasynManager->connectDevice(pasynUser,pport->portName,addr);
     if(status!=asynSuccess) {
+        printf("************** DEBUG HUGO: asynManager - inside connectAttempt connectDevice failed, will return\n");
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
             "%s %d autoConnect connectDevice failed.\n",
             pport->portName,addr);
@@ -720,6 +728,7 @@ static void connectAttempt(dpCommon *pdpCommon)
     }
     pasynInterface = pasynManager->findInterface(pasynUser,asynCommonType,TRUE);
     if(!pasynInterface) {
+        printf("************** DEBUG HUGO: asynManager - inside connectAttempt findInterface failed, will goto disconnect\n");
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
             "%s %d autoConnect findInterface for asynCommon failed.\n",
             pport->portName,addr);
@@ -730,18 +739,23 @@ static void connectAttempt(dpCommon *pdpCommon)
     asynPrint(pasynUser,ASYN_TRACE_FLOW,
         "%s %d autoConnect\n",pport->portName,addr);
     pasynUser->errorMessage[0] = '\0';
+    printf("********************** DEBUG HUGO: asynManager - inside connectAttempt pdpCommon->connected = %d, portName=%s, addr=%d\n", pdpCommon->connected, pport->portName, addr);
     /* When we were called we were not connected, but we could have connected since that test? */
     if (!pdpCommon->connected) {
         epicsMutexMustLock(pport->synchronousLock);
+        printf("********************** DEBUG HUGO: asynManager - inside connectAttempt - Got the lock... pdpCommon->connected = %d, portName=%s, addr=%d\n", pdpCommon->connected, pport->portName, addr);
         status = pasynCommon->connect(drvPvt,pasynUser);
         epicsMutexUnlock(pport->synchronousLock);
+        printf("********************** DEBUG HUGO: asynManager - inside connectAttempt - Released the lock... pdpCommon->connected = %d, portName=%s, addr=%d\n", pdpCommon->connected, pport->portName, addr);
     }
     if(status!=asynSuccess) {
+        printf("********************** DEBUG HUGO: asynManager - inside connectAttempt pasynCommon->connect failed. Error: %s, portName: %s, addr: %d\n", pasynUser->errorMessage, pport->portName, addr);
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
             "%s %s %d autoConnect could not connect\n",
             pasynUser->errorMessage,pport->portName,addr);
     }
 disconnect:
+    printf("************************* DEBUG HUGO: asynManager - inside connectAttempt will call disconnect. portName=%s, addr=%d\n", pport->portName, addr);
     status = pasynManager->disconnect(pasynUser);
     if(status!=asynSuccess) {
         asynPrint(pasynUser,ASYN_TRACE_ERROR,
@@ -1257,6 +1271,8 @@ static asynStatus connectDevice(asynUser *pasynUser,
     port    *pport = locatePort(portName);
     device  *pdevice;
 
+    printf("********************** DEBUG HUGO: asynManager - inside connectDevice with portName=%s and addr=%d\n", portName, addr);
+
     if(!pport) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                 "asynManager:connectDevice port %s not found",portName);
@@ -1282,13 +1298,13 @@ static asynStatus disconnect(asynUser *pasynUser)
     userPvt    *puserPvt = asynUserToUserPvt(pasynUser);
     port       *pport = puserPvt->pport;
     asynStatus status = asynSuccess;
-
     if(!pasynBase) asynInit();
     if(!pport) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
                 "asynManager::disconnect: not connected");
         return asynError;
     }
+    printf("********************** DEBUG HUGO: asynManager - inside disconnect with asynUser as parameter for port: %s\n", pport->portName);
     epicsMutexMustLock(pport->asynManagerLock);
     if(puserPvt->isQueued) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
@@ -1425,6 +1441,7 @@ static asynStatus queueRequest(asynUser *pasynUser,
     port     *pport = puserPvt->pport;
     device   *pdevice = puserPvt->pdevice;
     int      addr = (pdevice ? pdevice->addr : -1);
+    //int      addr = (pdevice ? pdevice->addr : 0);
     dpCommon *pdpCommon = findDpCommon(puserPvt);
     BOOL     addToFront = FALSE;
     BOOL     checkPortConnect = TRUE;
@@ -1460,6 +1477,7 @@ static asynStatus queueRequest(asynUser *pasynUser,
     if(!(pport->attributes&ASYN_CANBLOCK)) {
         device   *pdevice = puserPvt->pdevice;
         int      addr = (pdevice ? pdevice->addr : -1);
+        //int      addr = (pdevice ? pdevice->addr : 0);
         dpCommon *pdpCommon;
         
         pdpCommon = findDpCommon(puserPvt);
@@ -1501,6 +1519,10 @@ static asynStatus queueRequest(asynUser *pasynUser,
             "timeout callback was passed to createAsynUser");
         return asynError;
     }
+    if(strcmp(pport->portName, "CAM.SER")==0){
+        printf("*********************** DEBUG HUGO: blockPortCount: %d, blockDeviceCount: %d\n", puserPvt->blockPortCount, puserPvt->blockDeviceCount);
+        printf("*********************** DEBUG HUGO: pport: %p, pdpCommon: %p\n", pport->pblockProcessHolder, pdpCommon->pblockProcessHolder);
+    }
     if(puserPvt->blockPortCount>0 || puserPvt->blockDeviceCount>0) {
         if(pport->pblockProcessHolder
         && pport->pblockProcessHolder==puserPvt) addToFront = TRUE;
@@ -1541,6 +1563,7 @@ static asynStatus cancelRequest(asynUser *pasynUser,int *wasQueued)
     device   *pdevice = puserPvt->pdevice;
     double   timeout;
     int      addr = (pdevice ? pdevice->addr : -1);
+    //int      addr = (pdevice ? pdevice->addr : 0);
     int      i;
     *wasQueued = 0; /*Initialize to not removed*/
     if(!pport) {
@@ -1990,6 +2013,8 @@ static asynStatus exceptionConnect(asynUser *pasynUser)
     port       *pport = puserPvt->pport;
     dpCommon   *pdpCommon = findDpCommon(puserPvt);
 
+    printf("********************** DEBUG HUGO: asynManager - inside exceptionConnect with asynUser as parameter\n");
+
     if(!pport || !pdpCommon) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
             "asynManager:exceptionConnect not connected to port/device");
@@ -2012,6 +2037,8 @@ static asynStatus exceptionDisconnect(asynUser *pasynUser)
     userPvt    *puserPvt = asynUserToUserPvt(pasynUser);
     port       *pport = puserPvt->pport;
     dpCommon   *pdpCommon = findDpCommon(puserPvt);
+
+    printf("********************** DEBUG HUGO: asynManager - inside exceptionDisconnect with asynUser as parameter\n");
 
     if(!pport || !pdpCommon) {
         epicsSnprintf(pasynUser->errorMessage,pasynUser->errorMessageSize,
@@ -2987,6 +3014,7 @@ static void portConnectProcessCallback(asynUser *pasynUser)
     int isConnected;
     /* We were not connected when the request was queued, but we could have connected since then */
     status = pasynManager->isConnected(pasynUser, &isConnected);
+    printf("********************** DEBUG HUGO: asynManager - inside portConnectProcessCallback with asynUser as parameter, will call pasynCommon->connected. isConnected: %d\n", isConnected);
     if (!isConnected) status = pasynCommon->connect(drvPvt,pasynUser);
     if(status!=asynSuccess) {
         epicsTimerStartDelay(pport->connectTimer,pport->secondsBetweenPortConnect);

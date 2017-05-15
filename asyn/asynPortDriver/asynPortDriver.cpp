@@ -3070,10 +3070,16 @@ extern "C" {static asynStatus connect(void *drvPvt, asynUser *pasynUser)
 {
     asynPortDriver *pPvt = (asynPortDriver *)drvPvt;
     asynStatus status;
-    
+    printf("********************** DEBUG HUGO: asynPortDriver - inside connect with drvPvt and asynUser as parameters\n");    
     pPvt->lock();
+    printf("********************** DEBUG HUGO: asynPortDriver - inside connect, got the pPvt lock\n");
     status = pPvt->connect(pasynUser);
+    if (status == asynSuccess) {
+        printf("********************** DEBUG HUGO: asynPortDriver - inside connect, pPvt->connect returned asynSuccess\n");
+    }
     pPvt->unlock();
+    printf("********************** DEBUG HUGO: asynPortDriver - inside connect, released the pPvt lock\n");
+
     return(status);    
 }}
 
@@ -3087,6 +3093,7 @@ asynStatus asynPortDriver::connect(asynUser *pasynUser)
     asynStatus status;
     static const char *functionName = "connect";
     
+    printf("********************** DEBUG HUGO: asynPortDriver - inside connect with asynUser as parameters\n");
     status = getAddress(pasynUser, &addr); if (status != asynSuccess) return(status);
     pasynManager->exceptionConnect(pasynUser);
     asynPrint(pasynUser, ASYN_TRACE_FLOW,
@@ -3381,12 +3388,13 @@ void* findAsynPortDriver(const char *portName)
     asynUser *pasynUser;
     asynInterface *pasynInterface;
     asynStatus status;
-    
+    printf("******************** DEBUG HUGO: asynPortDriver - inside findAsynPortDriver with portName=%s\n", portName); 
     pasynUser = pasynManager->createAsynUser(NULL, NULL);
     status = pasynManager->connectDevice(pasynUser, portName, 0);
     if (status) return NULL;
     pasynInterface = pasynManager->findInterface(pasynUser, asynCommonType, 1);
     if (!pasynInterface) return NULL;
+    printf("******************** DEBUG HUGO: asynPortDriver - inside findAsynPortDriver will call disconnect\n");
     pasynManager->disconnect(pasynUser);
     pasynManager->freeAsynUser(pasynUser);
     return pasynInterface->drvPvt;
