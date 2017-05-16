@@ -1,11 +1,15 @@
 #ifndef asynPortDriver_H
 #define asynPortDriver_H
 
+#include <vector>
+#include <string>
+
 #include <epicsTypes.h>
 #include <epicsMutex.h>
 
 #include <asynStandardInterfaces.h>
-#include "paramVal.h"
+#include <asynParamType.h>
+#include <paramErrors.h>
 
 class paramList;
 
@@ -144,6 +148,8 @@ public:
     virtual asynStatus setDoubleParam(int list, int index, double value);
     virtual asynStatus setStringParam(          int index, const char *value);
     virtual asynStatus setStringParam(int list, int index, const char *value);
+    virtual asynStatus setStringParam(          int index, const std::string& value);
+    virtual asynStatus setStringParam(int list, int index, const std::string& value);
     virtual asynStatus getIntegerParam(          int index, int * value);
     virtual asynStatus getIntegerParam(int list, int index, int * value);
     virtual asynStatus getUIntDigitalParam(          int index, epicsUInt32 *value, epicsUInt32 mask);
@@ -152,6 +158,8 @@ public:
     virtual asynStatus getDoubleParam(int list, int index, double * value);
     virtual asynStatus getStringParam(          int index, int maxChars, char *value);
     virtual asynStatus getStringParam(int list, int index, int maxChars, char *value);
+    virtual asynStatus getStringParam(          int index, std::string& value);
+    virtual asynStatus getStringParam(int list, int index, std::string& value);
     virtual asynStatus callParamCallbacks();
     virtual asynStatus callParamCallbacks(          int addr);
     virtual asynStatus callParamCallbacks(int list, int addr);
@@ -172,7 +180,7 @@ protected:
     asynStandardInterfaces asynStdInterfaces;   /**< The asyn interfaces this driver implements */
 
 private:
-    paramList **params;
+    std::vector<paramList*> params;
     epicsMutexId mutexId;
     char *inputEosOctet;
     int inputEosLenOctet;
@@ -182,6 +190,7 @@ private:
         asynStatus doCallbacksArray(epicsType *value, size_t nElements,
                                     int reason, int address, void *interruptPvt);
 
+    friend class paramList;
 };
 
 #endif /* cplusplus */

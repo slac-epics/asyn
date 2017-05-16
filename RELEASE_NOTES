@@ -3,6 +3,11 @@
 #  Name: RELEASE_NOTES
 #
 #==============================================================
+#
+R4.31-1.0.0:   15-May-2017, B. Hill (bhill)
+	Merged in R4-31
+    Removed the IPAC dependency. If support for Greensprings IP488 is needed in the future
+    it will be handled the same way as the other IP, e.g. IP330, IP445, etc.
 
 R4.30-1.1.2:	14-Mar-2017, B. Hill  (bhill)
 	Bumped up to ipac/R2.11-1.5.0

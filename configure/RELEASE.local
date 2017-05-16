@@ -21,7 +21,7 @@
 # ==========================================================
 #  IPAC is only necessary if support for Greensprings IP488 is required
 #  IPAC release V2-7 or later is required.
-IPAC_MODULE_VERSION		= R2.11-1.5.0
+#IPAC_MODULE_VERSION		= R2.11-1.5.0
 
 # SNCSEQ is required for testIPServer
 #SNCSEQ_MODULE_VERSION=seq-R2-1-6_1-3
@@ -32,13 +32,13 @@ IPAC_MODULE_VERSION		= R2.11-1.5.0
 #  or
 # FOO = /Full/Path/To/Development/Version 
 # ==========================================================
-IPAC     = $(EPICS_MODULES)/ipac/$(IPAC_MODULE_VERSION)
+#IPAC     = $(EPICS_MODULES)/ipac/$(IPAC_MODULE_VERSION)
 #SNCSEQ  = $(EPICS_MODULES)/seq/$(SNCSEQ_MODULE_VERSION)
 
 # Make sure IPAC path exists
-ifeq ($(wildcard $(IPAC)),)
-$(error IPAC path not found: $(IPAC))
-endif
+#ifeq ($(wildcard $(IPAC)),)
+#$(error IPAC path not found: $(IPAC))
+#endif
 
 # Set EPICS_BASE last so it appears last in the DB, DBD, INCLUDE, and LIB search paths
 EPICS_BASE              = $(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
