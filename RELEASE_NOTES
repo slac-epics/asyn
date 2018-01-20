@@ -33,8 +33,18 @@
 R4.39-0.0.1:   04-Jun-2020, H. Slepicka (slepicka)
 	Applied lcls-git-workflow.patch to R4-39
 
+R4.32-1.0.0:   20-Jan-2018, B. Hill (bhill)
+	Started w/ R4.32-0.0.1
+	Applied Mike Browne's Lecroy and OPTION_TTYNAME changes.
+	Added RELEASE_NOTES and a small diagnostic fix from R4.31-1.branch
+
 R4.32-0.0.1:   20-Jan-2018, B. Hill (bhill)
 	Applied lcls-git-workflow.patch to R4-32
+
+R4.31-1.0.0:   15-May-2017, B. Hill (bhill)
+	Merged in R4-31
+    Removed the IPAC dependency. If support for Greensprings IP488 is needed in the future
+    it will be handled the same way as the other IP, e.g. IP330, IP445, etc.
 
 R4.31-0.1.0:   25-Mar-2017, B. Hill (bhill)
 	Merged in R4-31
