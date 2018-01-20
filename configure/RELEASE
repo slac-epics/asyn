@@ -1,22 +1,7 @@
 #RELEASE Location of external products
 
-SUPPORT=/corvette/home/epics/devel
-
-#  IPAC is only necessary if support for Greensprings IP488 is required
-#  IPAC release V2-7 or later is required.
-IPAC=$(SUPPORT)/ipac-2-15
-
-# SEQ is required for testIPServer
-SNCSEQ=$(SUPPORT)/seq-2-2-5
-
-## for sCalcout support in asynOctet - applications include asynCalc.dbd
-#CALC=$(SUPPORT)/calc-3-7-7
-#SSCAN=$(SUPPORT)/sscan-2-11-3
-
-#  EPICS_BASE 3.14.6 or later is required
-EPICS_BASE=/corvette/usr/local/epics-devel/base-7.0.3.1
-
--include $(TOP)/../RELEASE.local
--include $(TOP)/../RELEASE.$(EPICS_HOST_ARCH).local
+-include $(TOP)/../configure/SUPPORT.$(EPICS_HOST_ARCH)
 -include $(TOP)/configure/RELEASE.local
+-include $(TOP)/RELEASE.local
 
+-include $(TOP)/../configure/EPICS_BASE.$(EPICS_HOST_ARCH)

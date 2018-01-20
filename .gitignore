@@ -6,9 +6,10 @@
 /html/
 /include/
 /templates/
-/configure/*.local
+RELEASE_SITE
 *~
 O.*
+*.log
 *.swp
 *_BAK.adl
 /QtC-*
