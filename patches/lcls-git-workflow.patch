@@ -1,0 +1,244 @@
+diff --git a/.gitignore b/.gitignore
+index cfefcd8..6915b4a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,5 +1,7 @@
++RELEASE_SITE
+ *~
+ O.*
++*.log
+ *.swp
+ *_BAK.adl
+ bin/
+diff --git a/RELEASE_NOTES b/RELEASE_NOTES
+new file mode 100644
+index 0000000..86911ea
+--- /dev/null
++++ b/RELEASE_NOTES
+@@ -0,0 +1,147 @@
++#==============================================================
++#
++#  Name: RELEASE_NOTES
++#
++#  Rem:  This file contains the release notes for asyn package 
++#        as it pertains to the LCLS release format and procedures.
++#        Please note that this file does not come with the 
++#        standard asyn package release
++#
++#        The initial version of this software written 
++#        by Marty Krammer at APS.
++#
++#  Auth: dd-yyy,yyyy, Author's Name      (USERNAME)           
++#  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
++#--------------------------------------------------------------
++#  Mod:
++#         23-Apr-2013, E. Williams        (ernesto):
++#            add asyn-R4-21_1-0
++
++#         19-Mar-2010, S. Hoobler        (SONYA):
++#            add asyn-R4-9-lcls5
++#         22-Feb-2010, K. Luchini        (LUCHINI):
++#            add asyn-R4-9-lcls4
++#         27-Apr-2009, K. Luchini        (LUCHINI):
++#            add asyn-R4-9-lcls3
++#         05-Dec-2008, K. Luchini        (LUCHINI):
++#            add asyn-R4-7-1-lcls5
++#         10-Apr-2008, S. Schuh          (SCHUHS):
++#            add asyn-R4-9, asyn-R4-9-lcls1, and asyn-R4-9-lcls2
++# 
++#==============================================================
++#
++R4.32-0.0.1:   20-Jan-2018, B. Hill (bhill)
++	Applied lcls-git-workflow.patch to R4-32
++
++R4.31-0.1.0:   25-Mar-2017, B. Hill (bhill)
++	Merged in R4-31
++    Removed the IPAC dependency. If support for Greensprings IP488 is needed in the future
++    it will be handled the same way as the other IP, e.g. IP330, IP445, etc.
++
++R4.30-0.3.0:   6-Feb-2017, E. Williams (ernesto)
++               Changed IPAC version R2.14-0.1.0
++
++R4.30-0.2.0:	15-Oct-2016, B. Hill  (bhill)
++	Tweaked to set EPICS_BASE last.
++
++R4.30-0.1.2:	8-Oct-2016, B. Hill  (bhill)
++	Changed ipac version to R2.11-1.3.0
++
++R4.30-0.1.1:	8-Oct-2016, B. Hill  (bhill)
++	Changed ipac version to R2.8-1.2.0
++
++R4.30-0.1.0:	29-Sep-2016, B. Hill  (bhill)
++	Merged in asyn version 4-30: see documentation directory
++		for detailed release notes
++	Moved local build support from CONFIG_SITE and RELEASE to RELEASE.local
++	Reverted some old keyword expansions and reverted non-local build
++		files to match collaboration.
++
++asyn-R4-26_0:     Merge in the new asyn version 4-26: see documentation directory
++                  for detailed release notes
++                  Also build against:  ipac-R2-11_1-2
++
++asyn-R4-25_1-0:   Merge in the new asyn version 4-25: see documentation directory
++                  for detailed release notes
++
++asyn-R4-23_1-2:   Build for IPAC_MODULE_VERSION=ipac-R2-11_1-2; stable release
++
++asyn-R4-23_1-1:   Update Ipac dependency for uTCA and build for linux targets
++
++asyn-R4-23_1-0:   Merged in asyn4-23 from ANL; add site specific changes for SLAC
++                  to see RELEASE_NOTES look at the maintainer's website:
++                  http://www.aps.anl.gov/epics/modules/soft/asyn/R4-23/RELEASE_NOTES.
++                  --BUILD with:
++                    ipac-R2-11_1-0
++                    SNCSEQ is required for testIPServer (not needed in production only for testing)
++
++asyn-R4-21_1-0:   Merged in asyn4-21 from ANL; add site specific changes for SLAC
++                  to see RELEASE_NOTES look at the maintainer's website:
++                  http://www.aps.anl.gov/epics/modules/soft/asyn/R4-21/RELEASE_NOTES.
++
++
++asyn-R4-20_1-1:   Build against ipac-R2-11_1-0 (which builds for all targets)
++
++asyn-R4-20_1-0:   Merged in asyn4-20 from ANL; add site specific changes for SLAC
++                  to see RELEASE_NOTES look at the maintainer's website:
++                  http://www.aps.anl.gov/epics/modules/soft/asyn/R4-20/RELEASE_NOTES.html
++
++
++asyn-R4-19_1-0:   Merged in asyn4-19 from ANL; add site specific changes for SLAC
++                  to see RELEASE_NOTES look at the maintainer's website:
++                  http://www.aps.anl.gov/epics/modules/soft/asyn/R4-19/RELEASE_NOTES.html
++                  
++asyn-R4-18-lcls2: DO not use the sequencer; which means do not build testIPServerApp; 
++                  don't need this for production use. 
++                  That is only an example IOC application for testing. 
++                  Create a new release tag for this change = asyn-R4-18-lcls2
++
++asyn-R4-18-lcls1_OLD_IPAC: Using ipac-R2-8-lcls8. This needs to be cleaned up. 
++
++asyn-R4-18-lcls1:     Updated with asyn RELEASE 4-18
++                      edm files are now under the opi directory
++                      I removed both the top level edm and medm
++                      directories.  There are also display files
++                      for boy as well. Boy is part of CSS
++                      The lcls suffix indicates changes specific
++                      to SLAC ICD Software Department 
++asyn-R4-17-RC1-lcls1: Updated with asyn RELEASE 4-17-RC1
++                      Changes were needed for the new motor software
++                      READ Vendor's Release notes in the documentation
++                      directory. 
++
++asyn-R4-16-lcls2:   Build against ipac version 2.11: ipac-R2-11-lcls1
++
++asyn-R4-16-lcls1:   Update to new asyn version 4-16 from ANL
++                    Build with base-R3-14-8-2-lcls6
++                    and base-R3-14-12
++asyn-R4-9-lcls6:   Build with base-R3-14-8-2-lcls6_p1
++                   and base-R3-14-12
++
++asyn-R4-9-lcls5:   Build with base-R3-14-8-2-lcls6 and rtems 4.9.4
++
++asyn-R4-9-lcls4:   Build with base-R3-14-8-2 and rtems 4.9.3
++
++asyn-R4-9-lcls3:   Build with base-R3-14-8-2 and rtems 4.9.1
++
++asyn-R4-9-lcls2:   Build with base-R3-14-9-lcls1 and ipac-R2-8-lcls4.
++                   Include ipac support only for RTEMS-beatnik target.
++
++asyn-R4-9-lcls1:   Build with base-R3-14-8-2-lcls2 and ipac-R2-8-lcls3.
++                   Include ipac support only for RTEMS-beatnik target.
++
++asyn-R4-9:         Direct import from APS source.  Will not build at SLAC.
++
++asyn-R4-7-1-lcls5: Build with base-R3-14-9-lcls1 (RTEMS 4.7.1)
++                   modifications needed to bring the module to EPICS R3-14-9 standard
++                   at LCLS
++
++asyn-R4-7-1-lcls4: Backout to build with base-R2-14-8-2-lcls2
++                   Build with ipac-R2-8-lcls3
++                   Add this file
++
++asyn-R4-7-1-lcls3: Build with base-R2-14-9-lcls1
++
++asyn-R4-7-1-lcls2: Build with base-R3-14-8-2-lcls2 (RTEMS 4.7.1)
++
++asyn-R4-7-1-lcls1: Build with base-R3-14-8-2-lcls1 (RTEMS 4.7)
+diff --git a/configure/RELEASE b/configure/RELEASE
+index 76a87f4..923b7f3 100644
+--- a/configure/RELEASE
++++ b/configure/RELEASE
+@@ -1,15 +1,16 @@
+ #RELEASE Location of external products
+ 
+-SUPPORT=/corvette/home/epics/devel
+ -include $(TOP)/../configure/SUPPORT.$(EPICS_HOST_ARCH)
++-include $(TOP)/configure/RELEASE.local
++-include $(TOP)/RELEASE.local
+ 
+ #  IPAC is only necessary if support for Greensprings IP488 is required
+ #  IPAC release V2-7 or later is required.
+-IPAC=$(SUPPORT)/ipac-2-14
++#IPAC=$(SUPPORT)/ipac-2-14
+ 
+ # SEQ is required for testIPServer
+-SNCSEQ=$(SUPPORT)/seq-2-2-4
++#SNCSEQ=$(SUPPORT)/seq-2-2-4
+ 
+ #  EPICS_BASE 3.14.6 or later is required
+-EPICS_BASE=/corvette/usr/local/epics-devel/base-3.15.5
++#EPICS_BASE=/corvette/usr/local/epics-devel/base-3.15.5
+ -include $(TOP)/../configure/EPICS_BASE.$(EPICS_HOST_ARCH)
+diff --git a/configure/RELEASE.local b/configure/RELEASE.local
+new file mode 100644
+index 0000000..80cd46e
+--- /dev/null
++++ b/configure/RELEASE.local
+@@ -0,0 +1,48 @@
++# RELEASE.local
++#
++# Read definitions of:
++#	EPICS_SITE_TOP
++#	BASE_MODULE_VERSION
++#	EPICS_MODULES 
++# from one of the following options
++-include $(TOP)/../../RELEASE_SITE
++-include $(TOP)/RELEASE_SITE
++
++# Check that EPICS_MODULES was defined in a RELEASE_SITE file
++-include $(TOP)/../../RELEASE_SITE.check
++
++# ==========================================================
++# Define the version strings for all needed modules
++# Use naming pattern:
++#   FOO_MODULE_VERSION = R1.2
++# so scripts can extract version strings
++# Don't set your version to anything such as "test" that
++# could match a directory name.
++# ==========================================================
++#  IPAC is only necessary if support for Greensprings IP488 is required
++#  IPAC release V2-7 or later is required.
++#IPAC_MODULE_VERSION		= R2.11-1.5.0
++
++# SNCSEQ is required for testIPServer
++#SNCSEQ_MODULE_VERSION=seq-R2-1-6_1-3
++
++# ==========================================================
++# Define module paths using pattern
++# FOO = $(EPICS_MODULES)/foo/$(FOO_MODULE_VERSION)
++#  or
++# FOO = /Full/Path/To/Development/Version 
++# ==========================================================
++#IPAC     = $(EPICS_MODULES)/ipac/$(IPAC_MODULE_VERSION)
++#SNCSEQ  = $(EPICS_MODULES)/seq/$(SNCSEQ_MODULE_VERSION)
++
++# Make sure IPAC path exists
++#ifeq ($(wildcard $(IPAC)),)
++#$(error IPAC path not found: $(IPAC))
++#endif
++
++# Set EPICS_BASE last so it appears last in the DB, DBD, INCLUDE, and LIB search paths
++EPICS_BASE              = $(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
++
++# Check for undefined EPICS_BASE
++-include $(TOP)/../../EPICS_BASE.check
++
