@@ -41,6 +41,27 @@ R4.31-0.1.0:   25-Mar-2017, B. Hill (bhill)
     Removed the IPAC dependency. If support for Greensprings IP488 is needed in the future
     it will be handled the same way as the other IP, e.g. IP330, IP445, etc.
 
+R4.30-1.1.2:	14-Mar-2017, B. Hill  (bhill)
+	Bumped up to ipac/R2.11-1.5.0
+
+R4.30-1.1.1:	11-Jan-2017, B. Hill  (bhill)
+	Bumped up to ipac/R2.11-1.4.1
+
+R4.30-1.1.0:	15-Oct-2016, B. Hill  (bhill)
+	Tweaked build to set EPICS_BASE last.
+
+R4.30-1.0.1:	8-Oct-2016, B. Hill  (bhill)
+	Updated ipac to R2.11-1.3.0
+
+R4.30-1.0.0:	7-Oct-2016, B. Hill  (bhill)
+	Updated ipac to R2.8-1.2.0
+	Merged in asyn version 4-30: see documentation directory
+		for detailed release notes
+	Moved local build support from CONFIG_SITE and RELEASE to RELEASE.local
+	Added some more parameter names to asyn error messages
+	Merged in PCDS support for LeCroy scope
+	Merged in PCDS support for OPTION_TTYNAME
+
 R4.30-0.3.0:   6-Feb-2017, E. Williams (ernesto)
                Changed IPAC version R2.14-0.1.0
 
