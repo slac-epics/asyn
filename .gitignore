@@ -1,5 +1,7 @@
+RELEASE_SITE
 *~
 O.*
+*.log
 *.swp
 *_BAK.adl
 bin/
