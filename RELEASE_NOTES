@@ -33,6 +33,9 @@
 R4.39-0.0.1:   04-Jun-2020, H. Slepicka (slepicka)
 	Applied lcls-git-workflow.patch to R4-39
 
+R4.32-1.0.1:   2019-04-01 Bruce Hill
+	Suppress CROSS for linux-arm-apalis as toolset doesn't have rpc support.
+
 R4.32-1.0.0:   20-Jan-2018, B. Hill (bhill)
 	Started w/ R4.32-0.0.1
 	Applied Mike Browne's Lecroy and OPTION_TTYNAME changes.
