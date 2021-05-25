@@ -30,6 +30,9 @@
 # 
 #==============================================================
 #
+R4.39-1.0.0:   2021-05-25 Bruce Hill
+	Rebased SLAC changes onto R4.39-0.branch
+
 R4.39-0.0.1:   04-Jun-2020, H. Slepicka (slepicka)
 	Applied lcls-git-workflow.patch to R4-39
 
