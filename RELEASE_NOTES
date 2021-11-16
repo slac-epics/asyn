@@ -10,26 +10,11 @@
 #        The initial version of this software written 
 #        by Marty Krammer at APS.
 #
-#  Auth: dd-yyy,yyyy, Author's Name      (USERNAME)           
-#  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
-#--------------------------------------------------------------
-#  Mod:
-#         23-Apr-2013, E. Williams        (ernesto):
-#            add asyn-R4-21_1-0
-
-#         19-Mar-2010, S. Hoobler        (SONYA):
-#            add asyn-R4-9-lcls5
-#         22-Feb-2010, K. Luchini        (LUCHINI):
-#            add asyn-R4-9-lcls4
-#         27-Apr-2009, K. Luchini        (LUCHINI):
-#            add asyn-R4-9-lcls3
-#         05-Dec-2008, K. Luchini        (LUCHINI):
-#            add asyn-R4-7-1-lcls5
-#         10-Apr-2008, S. Schuh          (SCHUHS):
-#            add asyn-R4-9, asyn-R4-9-lcls1, and asyn-R4-9-lcls2
-# 
 #==============================================================
 #
+R4.39-1.0.1:   2021-11-15 Bruce Hill
+	Revert to collabortion CONFIG_SITE as we dont need a custom CROSS_COMPILER_TARGET_ARCH
+
 R4.39-1.0.0:   2021-05-25 Bruce Hill
 	Rebased SLAC changes onto R4.39-0.branch
 
