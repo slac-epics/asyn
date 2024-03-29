@@ -12,6 +12,9 @@
 #
 #==============================================================
 #
+R4.39-1.0.2:   2024-03-28 Jeremy Lorelli
+	Add CONFIG_SITE files for rhel8 and 9. These versions of RHEL need libtirpc for RPC support, instead of just glibc"
+
 R4.39-1.0.1:   2021-11-15 Bruce Hill
 	Revert to collabortion CONFIG_SITE as we dont need a custom CROSS_COMPILER_TARGET_ARCH
 
