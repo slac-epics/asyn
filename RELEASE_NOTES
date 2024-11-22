@@ -30,6 +30,9 @@
 # 
 #==============================================================
 #
+R4.35-0.0.2:   22-Nov-2024, J. Lorelli (lorelli)
+	Cherry picked tirpc changes from R4.39 for Rocky 9 support
+
 R4.32-0.0.1:   20-Jan-2018, B. Hill (bhill)
 	Applied lcls-git-workflow.patch to R4-32
 
