@@ -12,6 +12,9 @@
 #
 #==============================================================
 #
+R4.42-1.0.0:   2025-04-03 Bruce Hill
+	Started from R4-42 and added SLAC build support plus R4.39-1.branch commits via rebase.
+
 R4.39-1.0.2:   2024-03-28 Jeremy Lorelli
 	Add CONFIG_SITE files for rhel8 and 9. These versions of RHEL need libtirpc for RPC support, instead of just glibc"
 
