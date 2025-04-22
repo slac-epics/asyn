@@ -22,7 +22,11 @@
 #ifdef __rtems__
 #include <rpc/pmap_clnt.h>
 #include <rtems.h>
+#ifdef RTEMS_LIBBSD_STACK
+#define rpcTaskInit() 0
+#else
 #define rpcTaskInit rtems_rpc_task_init
+#endif
 #endif
 
 #ifdef __APPLE__
