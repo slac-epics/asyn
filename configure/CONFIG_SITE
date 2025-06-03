@@ -66,6 +66,13 @@ ifdef T_A
 PKG_ARCH=$(T_A)
 endif
 
+# In case an architecture needs tirpc, the path is here ready to use:
+TIRPC_PACKAGE_NAME=tirpc
+TIRPC_VERSION=1.3.5
+TIRPC_TOP=$(PACKAGE_SITE_TOP)/$(TIRPC_PACKAGE_NAME)/$(TIRPC_VERSION)
+TIRPC_LIB=$(TIRPC_TOP)/$(PKG_ARCH)/lib
+TIRPC_INCLUDE=$(TIRPC_TOP)/$(PKG_ARCH)/include/tirpc
+
 -include $(SUPPORT)/configure/CONFIG_SITE
 
 # These allow developers to override the CONFIG_SITE variable
