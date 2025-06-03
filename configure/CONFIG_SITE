@@ -58,6 +58,14 @@ DRV_FTDI_USE_LIBFTDI1=NO
 # To enable linking against this library, uncomment the following line
 # TIRPC=YES
 
+# =============================
+# Define the archiecture versions
+# =============================
+LINUXRT_BUILDROOT_VERSION=buildroot-2019.08
+ifdef T_A
+PKG_ARCH=$(T_A)
+endif
+
 -include $(SUPPORT)/configure/CONFIG_SITE
 
 # These allow developers to override the CONFIG_SITE variable
@@ -65,4 +73,3 @@ DRV_FTDI_USE_LIBFTDI1=NO
 # file itself.
 -include $(TOP)/../CONFIG_SITE.local
 -include $(TOP)/configure/CONFIG_SITE.local
-
