@@ -12,6 +12,10 @@
 #
 #==============================================================
 #
+R4.42-1.1.0:   2026-01-28 Jeremy Lorelli
+    Allow tirpc to come from the package area, instead of the system
+    Build fix for RTEMS 6 with libbsd networking stack
+
 R4.42-1.0.0:   2025-04-03 Bruce Hill
 	Started from R4-42 and added SLAC build support plus R4.39-1.branch commits via rebase.
 
