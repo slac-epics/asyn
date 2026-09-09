@@ -61,9 +61,23 @@ DRV_FTDI_USE_LIBFTDI1=NO
 # =============================
 # Define the archiecture versions
 # =============================
-LINUXRT_BUILDROOT_VERSION=buildroot-2019.08
 ifdef T_A
-PKG_ARCH=$(T_A)
+# The pre-built external packages live under directories that use a dot in the
+# buildroot version (e.g. buildroot-2025.02-x86_64, buildroot-2027.08-arm_zynq),
+# but EPICS base only accepts the target arch with an underscore
+# (buildroot-2025_02-x86_64). So keep T_A as the underscore form for base, and
+# translate the version underscore back to a dot only for the package paths.
+#
+# A buildroot arch is always "buildroot-<version>-<cpu>". Split T_A on '-' and
+# swap _ -> . in the version field (word 2) only, so any year/month works and
+# the cpu field is left alone no matter how many underscores it has (x86_64,
+# arm_zynq, ...). Non-buildroot arches pass through unchanged.
+ifneq ($(filter buildroot-%,$(T_A)),)
+_TA_FIELDS := $(subst -, ,$(T_A))
+PKG_ARCH   := buildroot-$(subst _,.,$(word 2,$(_TA_FIELDS)))-$(word 3,$(_TA_FIELDS))
+else
+PKG_ARCH   := $(T_A)
+endif
 endif
 
 # In case an architecture needs tirpc, the path is here ready to use:
