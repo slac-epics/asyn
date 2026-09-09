@@ -1,1 +1,6 @@
+# linuxRT packages/toolchain live under the buildroot-2019.08 arch. Set this
+# here (arch-specific) rather than globally so it does not leak into other
+# cross targets and override base's per-arch toolchain selection.
+
+LINUXRT_BUILDROOT_VERSION=buildroot-2019.08
 PKG_ARCH=$(LINUXRT_BUILDROOT_VERSION)-x86_64

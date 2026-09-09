@@ -1,0 +1,2 @@
+# Need libtirpc on modern Linux distros
+TIRPC=YES
