@@ -12,6 +12,10 @@
 #
 #==============================================================
 #
+R4.39-1.0.3:   2026-10-07 Marcio Donadio
+    - Use PKG_ARCH from the EPICS base, which allowed us to remove the
+      CONFIG_SITE.Common for linuxRT.
+
 R4.39-1.0.2:   2024-03-28 Jeremy Lorelli
 	Add CONFIG_SITE files for rhel8 and 9. These versions of RHEL need libtirpc for RPC support, instead of just glibc"
 
